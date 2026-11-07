@@ -1,0 +1,35 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "First answer."
+				}
+			],
+			"usage": {
+				"input": 100,
+				"output": 10
+			},
+			"chunking": {
+				"tokens": 4
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Second answer, building on the first."
+				}
+			],
+			"usage": {
+				"input": 140,
+				"output": 12
+			},
+			"chunking": {
+				"tokens": 4
+			}
+		}
+	]
+}

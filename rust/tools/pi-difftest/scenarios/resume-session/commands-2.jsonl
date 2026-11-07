@@ -1,0 +1,6 @@
+{"id": "prompt-2", "type": "prompt", "message": "What is my name?"}
+{"$wait":"agent_settled"}
+{"id":"state","type":"get_state"}
+{"id":"messages","type":"get_messages"}
+{"id":"stats","type":"get_session_stats"}
+{"id":"tree","type":"get_tree"}

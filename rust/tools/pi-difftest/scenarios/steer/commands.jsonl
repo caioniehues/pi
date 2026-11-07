@@ -1,0 +1,9 @@
+{"id": "prompt-1", "type": "prompt", "message": "Describe the plan."}
+{"$wait":"message_update","where":{"assistantMessageEvent":{"type":"text_delta"}}}
+{"id":"steer-1","type":"steer","message":"Actually, change direction."}
+{"$release":true}
+{"$wait":"agent_settled"}
+{"id":"state","type":"get_state"}
+{"id":"messages","type":"get_messages"}
+{"id":"stats","type":"get_session_stats"}
+{"id":"tree","type":"get_tree"}

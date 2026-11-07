@@ -1,0 +1,30 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"error": {
+				"status": 429,
+				"body": {
+					"type": "error",
+					"error": {
+						"type": "rate_limit_error",
+						"message": "Rate limited, slow down"
+					}
+				},
+				"retryAfter": 0
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Answered after the retry."
+				}
+			],
+			"usage": {
+				"input": 100,
+				"output": 10
+			}
+		}
+	]
+}

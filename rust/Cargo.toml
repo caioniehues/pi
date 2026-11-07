@@ -35,6 +35,9 @@ rust-version = "1.99.1"
 [workspace.dependencies]
 allocation-counter = "=0.8.1"
 anyhow = "=1.0.104"
+axum = { version = "=0.8.9", default-features = false }
+bytes = "=1.12.1"
+futures-util = { version = "=0.3.34", default-features = false }
 getrandom = "=0.4.3"
 # SQLite with the library compiled in (`bundled`: no system libsqlite3, one SQLite version everywhere) and the
 # prepared-statement cache (`cache`) the Node driver's 256-statement LRU maps to. Default features off: they add a
@@ -46,7 +49,9 @@ ryu = "=1.0.23"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.154", features = ["preserve_order", "float_roundtrip"] }
 sha2 = "=0.11.1"
+similar = { version = "=3.2.0", default-features = false, features = ["text"] }
 thiserror = "=2.0.21"
+tokio = { version = "=1.54.1", default-features = false }
 tokio-util = { version = "=0.7.20", default-features = false }
 toml = "=1.1.8"
 tracing = { version = "=0.1.44", default-features = false, features = ["std"] }

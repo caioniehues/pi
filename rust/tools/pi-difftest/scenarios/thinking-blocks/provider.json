@@ -1,0 +1,25 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "thinking",
+					"thinking": "The user wants a greeting. Keep it short.",
+					"signature": "sig-abc123"
+				},
+				{
+					"type": "text",
+					"text": "Hi there!"
+				}
+			],
+			"usage": {
+				"input": 100,
+				"output": 30
+			},
+			"chunking": {
+				"tokens": 10
+			}
+		}
+	]
+}

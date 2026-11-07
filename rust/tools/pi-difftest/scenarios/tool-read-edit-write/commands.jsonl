@@ -1,0 +1,6 @@
+{"id": "prompt-1", "type": "prompt", "message": "Change world to pi in greeting.txt and write a farewell file."}
+{"$wait":"agent_settled"}
+{"id":"state","type":"get_state"}
+{"id":"messages","type":"get_messages"}
+{"id":"stats","type":"get_session_stats"}
+{"id":"tree","type":"get_tree"}

@@ -1,0 +1,20 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Olá! Ça va? Привет, 世界 — how can I help?"
+				}
+			],
+			"usage": {
+				"input": 120,
+				"output": 9
+			},
+			"chunking": {
+				"bytes": 7
+			}
+		}
+	]
+}

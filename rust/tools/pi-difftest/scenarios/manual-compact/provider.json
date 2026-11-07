@@ -1,0 +1,53 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "First answer."
+				}
+			],
+			"usage": {
+				"input": 500,
+				"output": 20
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Second answer."
+				}
+			],
+			"usage": {
+				"input": 600,
+				"output": 20
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "## Goal\nThe user asked two questions."
+				}
+			],
+			"usage": {
+				"input": 300,
+				"output": 30
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "The turn so far: the user asked a second question."
+				}
+			],
+			"usage": {
+				"input": 200,
+				"output": 15
+			}
+		}
+	]
+}

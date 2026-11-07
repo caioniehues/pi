@@ -1,0 +1,21 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "This answer will be cut off before it finishes streaming."
+				}
+			],
+			"usage": {
+				"input": 100,
+				"output": 10
+			},
+			"chunking": {
+				"tokens": 5
+			},
+			"pauseAfter": 3
+		}
+	]
+}

@@ -1,0 +1,9 @@
+{"id": "prompt-1", "type": "prompt", "message": "Do the first part."}
+{"$wait":"message_update","where":{"assistantMessageEvent":{"type":"text_delta"}}}
+{"id":"follow-1","type":"follow_up","message":"Then summarize."}
+{"$release":true}
+{"$wait":"agent_settled"}
+{"id":"state","type":"get_state"}
+{"id":"messages","type":"get_messages"}
+{"id":"stats","type":"get_session_stats"}
+{"id":"tree","type":"get_tree"}

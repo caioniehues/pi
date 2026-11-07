@@ -1,0 +1,65 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Earlier answer about the project."
+				}
+			],
+			"usage": {
+				"input": 500,
+				"output": 20
+			}
+		},
+		{
+			"error": {
+				"status": 400,
+				"body": {
+					"type": "error",
+					"error": {
+						"type": "invalid_request_error",
+						"message": "prompt is too long: 213462 tokens > 200000 maximum"
+					}
+				}
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "## Goal\nSummary of the earlier conversation."
+				}
+			],
+			"usage": {
+				"input": 300,
+				"output": 30
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "The turn so far: the user asked for details."
+				}
+			],
+			"usage": {
+				"input": 200,
+				"output": 15
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Answer after compaction."
+				}
+			],
+			"usage": {
+				"input": 200,
+				"output": 10
+			}
+		}
+	]
+}

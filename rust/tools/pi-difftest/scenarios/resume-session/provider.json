@@ -1,0 +1,29 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Noted: your name is Ada."
+				}
+			],
+			"usage": {
+				"input": 100,
+				"output": 8
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Your name is Ada."
+				}
+			],
+			"usage": {
+				"input": 150,
+				"output": 6
+			}
+		}
+	]
+}

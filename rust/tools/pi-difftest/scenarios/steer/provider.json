@@ -1,0 +1,42 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Let me check the state first."
+				},
+				{
+					"type": "toolCall",
+					"id": "toolu_steer_1",
+					"name": "bash",
+					"arguments": {
+						"command": "echo checking"
+					}
+				}
+			],
+			"stopReason": "toolUse",
+			"usage": {
+				"input": 100,
+				"output": 20
+			},
+			"chunking": {
+				"tokens": 6
+			},
+			"pauseAfter": 3
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Understood, switching to the new direction."
+				}
+			],
+			"usage": {
+				"input": 160,
+				"output": 9
+			}
+		}
+	]
+}

@@ -1,0 +1,8 @@
+{
+	"description": "A context-overflow error, then an automatic compaction whose keepRecentTokens (10) keeps the last user turn whole: the cut lands on the first answer, one turn-prefix summary request covers the first prompt, and the retried request re-sends the first answer and the kept prompt.",
+	"settings": {
+		"compaction": {
+			"keepRecentTokens": 10
+		}
+	}
+}

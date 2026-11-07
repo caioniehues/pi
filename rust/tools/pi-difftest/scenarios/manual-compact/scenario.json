@@ -1,0 +1,8 @@
+{
+	"description": "A compact command after two turns, answered with a summary; keepRecentTokens 1 splits the last turn, so a turn-prefix summary follows the history summary.",
+	"settings": {
+		"compaction": {
+			"keepRecentTokens": 1
+		}
+	}
+}

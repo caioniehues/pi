@@ -1,0 +1,75 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "toolCall",
+					"id": "toolu_read_1",
+					"name": "read",
+					"arguments": {
+						"path": "greeting.txt"
+					}
+				}
+			],
+			"stopReason": "toolUse",
+			"usage": {
+				"input": 100,
+				"output": 20
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "toolCall",
+					"id": "toolu_edit_1",
+					"name": "edit",
+					"arguments": {
+						"path": "greeting.txt",
+						"edits": [
+							{
+								"oldText": "world",
+								"newText": "pi"
+							}
+						]
+					}
+				}
+			],
+			"stopReason": "toolUse",
+			"usage": {
+				"input": 150,
+				"output": 20
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "toolCall",
+					"id": "toolu_write_1",
+					"name": "write",
+					"arguments": {
+						"path": "farewell.txt",
+						"content": "Goodbye, pi!\n"
+					}
+				}
+			],
+			"stopReason": "toolUse",
+			"usage": {
+				"input": 200,
+				"output": 20
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Edited greeting.txt and wrote farewell.txt."
+				}
+			],
+			"usage": {
+				"input": 250,
+				"output": 12
+			}
+		}
+	]
+}

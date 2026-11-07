@@ -1,0 +1,9 @@
+{"id": "prompt-1", "type": "prompt", "message": "First question?"}
+{"$wait":"agent_settled"}
+{"id": "prompt-2", "type": "prompt", "message": "Second question?"}
+{"$wait":"agent_settled"}
+{"id":"compact-1","type":"compact"}
+{"id":"state","type":"get_state"}
+{"id":"messages","type":"get_messages"}
+{"id":"stats","type":"get_session_stats"}
+{"id":"tree","type":"get_tree"}

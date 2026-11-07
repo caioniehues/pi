@@ -9,4 +9,11 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+anyhow.workspace = true
 pi-fake-provider = { path = "../pi-fake-provider" }
+pi-json = { path = "../../crates/pi-json" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+similar.workspace = true
+tokio = { workspace = true, features = ["io-util", "macros", "process", "rt-multi-thread", "sync", "time"] }

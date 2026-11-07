@@ -1,0 +1,8 @@
+{
+	"description": "A 429 with retry-after, retried by the session after its base delay, then success.",
+	"settings": {
+		"retry": {
+			"baseDelayMs": 50
+		}
+	}
+}

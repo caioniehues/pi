@@ -1,0 +1,15 @@
+{
+	"description": "A second pi process continues the first one's session file with --session.",
+	"runs": [
+		{
+			"commands": "commands.jsonl"
+		},
+		{
+			"commands": "commands-2.jsonl",
+			"args": [
+				"--session",
+				"{session}"
+			]
+		}
+	]
+}

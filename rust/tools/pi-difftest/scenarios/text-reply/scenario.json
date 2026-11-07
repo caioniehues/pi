@@ -1,0 +1,3 @@
+{
+	"description": "One prompt answered with non-ASCII text, written in 7-byte pieces that cut UTF-8 sequences and SSE events."
+}

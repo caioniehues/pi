@@ -1,0 +1,3 @@
+{
+	"description": "A bash tool call streamed in 3-character argument deltas, its result fed back, then a text answer."
+}

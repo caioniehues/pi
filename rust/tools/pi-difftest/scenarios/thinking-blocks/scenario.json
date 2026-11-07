@@ -1,0 +1,10 @@
+{
+	"description": "A reasoning model answering with a thinking block (with signature) and text.",
+	"args": [
+		"--thinking",
+		"high"
+	],
+	"model": {
+		"reasoning": true
+	}
+}

@@ -1,0 +1,8 @@
+{
+	"description": "A context-overflow error, an automatic compaction summary, then the retried prompt succeeds; keepRecentTokens 1 splits the last turn, so a turn-prefix summary follows the history summary.",
+	"settings": {
+		"compaction": {
+			"keepRecentTokens": 1
+		}
+	}
+}

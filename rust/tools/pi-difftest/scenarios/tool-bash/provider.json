@@ -1,0 +1,41 @@
+{
+	"delayMs": 20,
+	"responses": [
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "Let me look."
+				},
+				{
+					"type": "toolCall",
+					"id": "toolu_bash_1",
+					"name": "bash",
+					"arguments": {
+						"command": "echo \"files: $(ls)\""
+					}
+				}
+			],
+			"stopReason": "toolUse",
+			"usage": {
+				"input": 100,
+				"output": 20
+			},
+			"chunking": {
+				"tokens": 3
+			}
+		},
+		{
+			"content": [
+				{
+					"type": "text",
+					"text": "The directory holds notes.txt."
+				}
+			],
+			"usage": {
+				"input": 180,
+				"output": 8
+			}
+		}
+	]
+}

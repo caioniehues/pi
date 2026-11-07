@@ -80,11 +80,15 @@ Whoever defers something adds it here in the same change; a slice's spec include
   `cacheWrite1h` (and `reasoning` when reported) after `cost` on every message, so TS-written Anthropic assistant
   lines rewrite with a different key order. C3b writes `Usage` in that provider's order for its messages (C1 review,
   2026-11-06).
-
-### C4
-
-- **`Usage` key order is not normalized away**: the difftest normalizer must not mask the Anthropic `Usage` key
-  order difference above; decide there whether the Rust writer reorders on write (C1 review, 2026-11-06).
+  Decided in C4: the difftest normalizer compares lines as text in their own key order, so the goldens hold TS's
+  order (`cacheWrite1h` after `cost` in every Anthropic message's usage) and the Rust writer must produce it
+  (C4, 2026-11-07).
+- **Request shape in the difftest goldens**: `golden/*/requests.jsonl` holds the URL (Anthropic posts to
+  `/v1/messages?beta=true`), the body in the SDKs' key order, and the headers pi sets (`anthropic-version`,
+  `anthropic-beta`, `anthropic-dangerous-direct-browser-access`, `content-type`, `accept`, the shape of
+  `x-api-key`/`authorization`, pi's identity and attribution headers). C3b matches the URL, the body key order
+  and those headers; the SDK and undici headers are not reproduced (see "Decided divergences") (C4 review,
+  2026-11-07).
 
 ### C8
 
@@ -109,6 +113,13 @@ Whoever defers something adds it here in the same change; a slice's spec include
 
 ### C12
 
+- **Ids the difftest normalizer maps**: entry ids must be 8 lowercase hex characters and session ids UUIDs (as TS
+  makes them), or the normalizer leaves them raw and every golden differs (C4 review, 2026-11-07).
+- **Difftest environment**: the driver runs pi with only `PATH`, `HOME`, `PI_CODING_AGENT_DIR`, `PI_PACKAGE_DIR`
+  (a link in the sandbox), `PI_OFFLINE=1`, `PI_TELEMETRY=0`, `TZ=UTC`, `LANG=C.UTF-8`. The Rust pi must honor
+  `PI_PACKAGE_DIR` for the docs, README and examples paths of its system prompt (TS `getPackageDir`), since the
+  goldens hold `$ROOT/pi-package/...` and the prompt's length feeds token estimates; `--package-dir` sets the link's
+  target (C4, 2026-11-07).
 - **Unknown RPC commands**: `RpcCommand` rejects an unknown `type`; RPC mode must still echo `id` and answer
   `Unknown command: <type>`, so it reads `id` and `type` from the raw object before typed parsing (C1 review,
   2026-11-06).
@@ -119,6 +130,12 @@ Whoever defers something adds it here in the same change; a slice's spec include
   surrogate escape (`"\ud800"`) to U+FFFD, where `serde_json` rejects it and `JSON.parse` keeps it. pi-ai's argument
   parsing must go through `pi_json::parse`. One unpaired surrogate and U+FFFD both count as one code point, so
   pi-schema's length checks agree with TS (C2 review, 2026-11-06).
+
+### C13a
+
+- **Fake provider `/v1/responses`**: the route exists and answers 501; add the openai-responses SSE renderer
+  (`packages/ai/src/api/openai-responses-shared.ts`) beside `anthropic.rs` and `openai_completions.rs`, and the
+  API to `ALL_APIS` in pi-difftest (C4, 2026-11-07).
 
 ### C18b
 
@@ -240,6 +257,11 @@ Whoever defers something adds it here in the same change; a slice's spec include
 ## Decided divergences
 
 Behaviour of the Rust port that deliberately differs from the TS reference, with the decision that settled it.
+
+- **SDK and undici request headers** (coordinator, C4 review, 2026-11-07): headers that the TS SDKs or undici add,
+  not pi (`x-stainless-*`, `accept-language`, `sec-fetch-mode`, `accept-encoding`, `connection`, `content-length`,
+  `host`, `user-agent`), are no parity requirement; the difftest normalizer drops them from `requests.jsonl`.
+  Headers pi sets and the URL, `?beta=true` included, stay compared.
 
 - **Lone surrogates read as U+FFFD** (D0a review, 2026-11-06): a JS string may hold an unpaired UTF-16 surrogate and
   `JSON.stringify` writes it as an escape; `serde_json` rejects such text. `pi_json::parse` maps every lone surrogate
