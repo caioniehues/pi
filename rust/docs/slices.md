@@ -18,7 +18,7 @@ includes every entry of its section; a done entry is deleted.
 | C2 | pi-schema | `pi-schema` | done |
 | C3a | pi-ai core: catalog, registry, auth resolution, streams, transcript, retry, faux provider | `pi-ai` | building |
 | C3b | pi-ai wire APIs anthropic-messages and openai-completions | `pi-ai` | planned |
-| C4 | Fake provider server + difftest driver, goldens from TS | `pi-fake-provider`, `pi-difftest` | building |
+| C4 | Fake provider server + difftest driver, goldens from TS | `pi-fake-provider`, `pi-difftest` | done |
 | C5 | pi-agent | `pi-agent` | planned |
 | C6a | pi-sdk core: extension, events, tools, contexts, api, settings, `docs/sdk.md` | `pi-sdk` | planned |
 | C6b | pi-sdk theme and UI surface; pi-tui component contract and colors | `pi-sdk`, `pi-tui` | planned |
