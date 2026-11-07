@@ -654,4 +654,471 @@ mod tests {
 		assert!(taken_weak.upgrade().is_none());
 		assert_eq!(queue.size(), 0);
 	}
+
+	/// The four `PendingOps` folding fuzz tests of `delta-pending.test.ts`, which need the tracker and the diff.
+	mod folding {
+		use super::{PendingOps, PendingTake};
+		use crate::delta::diff::diff_revisions;
+		use crate::delta::op::{Op, Seg, WireOp};
+		use crate::delta::snapshot::{Snapshot, apply_immutable};
+		use crate::delta::tracker::{Draft, track};
+		use crate::delta::wire::{Decoder, Encoder};
+		use pi_json::{JsonValue, to_js_string};
+		use std::sync::Arc;
+
+		/// TS `random`: a seeded LCG, so a failing sequence reproduces from its seed.
+		struct Random(u32);
+
+		/// TS texts, without the lone surrogate halves a Rust string cannot hold.
+		const TEXTS: [&str; 11] = [
+			"a",
+			"bc",
+			" tok",
+			"é",
+			"😀",
+			"\u{2028}",
+			"日本語",
+			"\"q\"",
+			"\\",
+			"",
+			"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		];
+		const KEYS: [&str; 9] = ["a", "b", "0", "1", "01", "a.b", "x y", "text", "list"];
+
+		impl Random {
+			fn next(&mut self) -> f64 {
+				self.0 = self.0.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+				f64::from(self.0) / 4_294_967_296.0
+			}
+
+			fn int(&mut self, max: usize) -> usize {
+				#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "below max")]
+				let index = (self.next() * f64::from(u32::try_from(max).unwrap())).floor() as usize;
+				index
+			}
+
+			fn pick<'a>(&mut self, items: &[&'a str]) -> &'a str {
+				items[self.int(items.len())]
+			}
+
+			fn primitive(&mut self) -> Snapshot {
+				match self.int(4) {
+					0 => Snapshot::from(&JsonValue::from(self.int(100))),
+					1 => Snapshot::string(self.pick(&TEXTS)),
+					2 => Snapshot::Bool(self.next() < 0.5),
+					_ => Snapshot::Null,
+				}
+			}
+
+			fn value(&mut self, depth: usize) -> Snapshot {
+				let roll = self.next();
+				if depth > 2 || roll < 0.4 {
+					return self.primitive();
+				}
+				if roll < 0.7 {
+					let length = self.int(4);
+					return Snapshot::array((0..length).map(|_| self.value(depth + 1)).collect());
+				}
+				let count = self.int(4) + 1;
+				let members: Vec<(String, Snapshot)> = (0..count)
+					.map(|_| (self.pick(&KEYS).to_owned(), self.value(depth + 1)))
+					.collect();
+				Snapshot::object(members)
+			}
+
+			fn root(&mut self) -> Snapshot {
+				let count = self.int(4) + 2;
+				let members: Vec<(String, Snapshot)> = (0..count)
+					.map(|_| (self.pick(&KEYS).to_owned(), self.value(0)))
+					.collect();
+				Snapshot::object(members)
+			}
+		}
+
+		fn key(text: &str) -> Seg {
+			Seg::Key(text.to_owned())
+		}
+
+		/// Every (parent, key) slot under `node`, parents first, as the path of the slot.
+		fn slots(node: &Snapshot, path: &mut Vec<Seg>, out: &mut Vec<Vec<Seg>>) {
+			let children: Vec<(Seg, &Snapshot)> = match node {
+				Snapshot::Array(items) => items
+					.iter()
+					.enumerate()
+					.map(|(index, item)| (Seg::Index(index as u64), item))
+					.collect(),
+				Snapshot::Object(object) => object.iter().map(|(name, value)| (key(name), value)).collect(),
+				_ => return,
+			};
+			for (segment, child) in children {
+				path.push(segment);
+				out.push(path.clone());
+				slots(child, path, out);
+				path.pop();
+			}
+		}
+
+		fn array_len(draft: &Draft, path: &[Seg]) -> usize {
+			draft
+				.get(path)
+				.unwrap()
+				.as_ref()
+				.and_then(Snapshot::as_array)
+				.map_or(0, <[Snapshot]>::len)
+		}
+
+		fn sort_by_json(draft: &mut Draft, path: &[Seg]) {
+			draft
+				.sort_by(path, |left, right| {
+					let (left, right) = (to_js_string(&left.to_value()), to_js_string(&right.to_value()));
+					left.encode_utf16().cmp(right.encode_utf16())
+				})
+				.unwrap();
+		}
+
+		/// TS `mutateAnywhere` with `appendToDraft`: one random edit anywhere in the draft.
+		fn mutate_anywhere(draft: &mut Draft, rnd: &mut Random) {
+			let mut all = Vec::new();
+			slots(&draft.get(&[]).unwrap().unwrap(), &mut Vec::new(), &mut all);
+			if all.is_empty() {
+				let name = rnd.pick(&["a", "b"]);
+				let value = rnd.value(0);
+				draft.set(&[key(name)], Some(value)).unwrap();
+				return;
+			}
+			let path = all[rnd.int(all.len())].clone();
+			let current = draft.get(&path).unwrap().unwrap().clone();
+			let in_array = matches!(path.last(), Some(Seg::Index(_)));
+			let roll = rnd.next();
+			match &current {
+				Snapshot::String(text) => {
+					if roll < 0.3 && !in_array {
+						let more = rnd.pick(&TEXTS);
+						draft.append_text(&path, more).unwrap();
+					} else if roll < 0.6 {
+						let more = rnd.pick(&TEXTS);
+						draft
+							.set(&path, Some(Snapshot::string(&format!("{text}{more}"))))
+							.unwrap();
+					} else if roll < 0.8 {
+						let cut = rnd.int(3).min(text.chars().count());
+						let rest: String = text.chars().skip(cut).collect();
+						draft.set(&path, Some(Snapshot::string(&rest))).unwrap();
+					} else {
+						let value = rnd.primitive();
+						draft.set(&path, Some(value)).unwrap();
+					}
+				}
+				Snapshot::Array(items) => mutate_array(draft, &path, items.len(), roll, rnd),
+				Snapshot::Object(object) => {
+					let keys: Vec<String> = object.iter().map(|(name, _)| name.to_owned()).collect();
+					let mut child = path.clone();
+					if roll < 0.4 {
+						child.push(key(rnd.pick(&["a", "b", "1", "x y"])));
+						let value = rnd.value(0);
+						draft.set(&child, Some(value)).unwrap();
+					} else if roll < 0.6 && !keys.is_empty() {
+						child.push(key(&keys[rnd.int(keys.len())]));
+						draft.delete(&child).unwrap();
+					} else {
+						let value = rnd.value(0);
+						draft.set(&path, Some(value)).unwrap();
+					}
+				}
+				_ => {
+					let value = if rnd.next() < 0.7 {
+						rnd.primitive()
+					} else {
+						rnd.value(0)
+					};
+					draft.set(&path, Some(value)).unwrap();
+				}
+			}
+		}
+
+		fn mutate_array(draft: &mut Draft, path: &[Seg], length: usize, roll: f64, rnd: &mut Random) {
+			if roll < 0.3 {
+				let value = rnd.value(0);
+				draft.push(path, vec![value]).unwrap();
+			} else if roll < 0.5 {
+				let start = i64::try_from(rnd.int(length + 1)).unwrap();
+				let remove = rnd.int(2);
+				let items = if rnd.next() < 0.5 {
+					vec![rnd.value(0)]
+				} else {
+					Vec::new()
+				};
+				draft.splice(path, start, Some(remove), items).unwrap();
+			} else if roll < 0.65 && length > 0 {
+				let index = rnd.int(length);
+				let value = rnd.value(0);
+				draft.set_index(path, index, value).unwrap();
+			} else if roll < 0.75 && length > 1 {
+				draft.reverse(path).unwrap();
+			} else if roll < 0.85 && length > 1 {
+				sort_by_json(draft, path);
+			} else if roll < 0.95 {
+				let value = rnd.value(0);
+				draft.set(path, Some(value)).unwrap();
+			} else {
+				draft.set_len(path, 0).unwrap();
+			}
+		}
+
+		/// TS `mutateList`: leaf edits of list elements between splices, pushes and reorders of the list.
+		fn mutate_list(draft: &mut Draft, rnd: &mut Random) {
+			let list = vec![key("list")];
+			let element = || Snapshot::from(&serde_json::json!({"x": "", "n": 0}));
+			if !matches!(draft.get(&list).unwrap(), Some(Snapshot::Array(_))) {
+				draft
+					.set(&list, Some(Snapshot::array(vec![element(), element(), element()])))
+					.unwrap();
+				return;
+			}
+			let length = array_len(draft, &list);
+			let roll = rnd.next();
+			if roll < 0.45 && length > 0 {
+				let index = rnd.int(length);
+				let mut path = vec![key("list"), Seg::Index(index as u64)];
+				if matches!(draft.get(&path).unwrap(), Some(Snapshot::Object(_))) {
+					let x = draft.get(&[key("list"), Seg::Index(index as u64), key("x")]).unwrap();
+					if rnd.next() < 0.3 && matches!(x, Some(Snapshot::String(_))) {
+						path.push(key("x"));
+						let more = rnd.pick(&TEXTS);
+						draft.append_text(&path, more).unwrap();
+					} else if rnd.next() < 0.5 {
+						let text = x.as_ref().and_then(Snapshot::as_str).unwrap_or("").to_owned();
+						path.push(key("x"));
+						let more = rnd.pick(&TEXTS);
+						draft
+							.set(&path, Some(Snapshot::string(&format!("{text}{more}"))))
+							.unwrap();
+					} else {
+						path.push(key("n"));
+						let n = rnd.int(9);
+						draft.set(&path, Some(Snapshot::from(&JsonValue::from(n)))).unwrap();
+					}
+				} else {
+					let index = rnd.int(length);
+					draft.set_index(&list, index, element()).unwrap();
+				}
+			} else if roll < 0.6 {
+				let start = i64::try_from(rnd.int(length + 1)).unwrap();
+				let remove = rnd.int(2);
+				let items = if rnd.next() < 0.6 {
+					let text = rnd.pick(&TEXTS);
+					vec![Snapshot::from(&serde_json::json!({"x": text, "n": 0}))]
+				} else {
+					Vec::new()
+				};
+				draft.splice(&list, start, Some(remove), items).unwrap();
+			} else if roll < 0.7 {
+				draft.push(&list, vec![element()]).unwrap();
+			} else if roll < 0.8 && length > 1 {
+				draft.reverse(&list).unwrap();
+			} else if roll < 0.9 && length > 0 {
+				let index = rnd.int(length);
+				let value = rnd.primitive();
+				draft.set_index(&list, index, value).unwrap();
+			} else if length > 0 {
+				let start = i64::try_from(rnd.int(length)).unwrap();
+				draft.splice(&list, start, Some(1), Vec::new()).unwrap();
+			}
+		}
+
+		/// TS `mutateRootArray`.
+		fn mutate_root_array(draft: &mut Draft, rnd: &mut Random) {
+			let length = array_len(draft, &[]);
+			match rnd.int(7) {
+				0 => {
+					let value = rnd.value(0);
+					draft.push(&[], vec![value]).unwrap();
+				}
+				1 => {
+					let (start, remove) = (i64::try_from(rnd.int(length + 1)).unwrap(), rnd.int(4));
+					let value = rnd.value(0);
+					draft.splice(&[], start, Some(remove), vec![value]).unwrap();
+				}
+				2 => draft.reverse(&[]).unwrap(),
+				3 => sort_by_json(draft, &[]),
+				4 if length > 0 => {
+					let index = rnd.int(length);
+					let value = rnd.value(0);
+					draft.set_index(&[], index, value).unwrap();
+				}
+				4 => {}
+				5 => drop(draft.shift(&[]).unwrap()),
+				_ => {
+					let (start, remove) = (i64::try_from(rnd.int(length + 1)).unwrap(), rnd.int(4));
+					draft.splice(&[], start, Some(remove), Vec::new()).unwrap();
+				}
+			}
+		}
+
+		/// One sequence of commits from a value: each commit's ops and the value after it.
+		struct Sequence {
+			initial: Snapshot,
+			commits: Vec<(Arc<[Op]>, Snapshot)>,
+		}
+
+		/// TS `trackedSequence`.
+		fn tracked_sequence(
+			initial: Snapshot,
+			commits: usize,
+			rnd: &mut Random,
+			mutate: fn(&mut Draft, &mut Random),
+			replace: fn(&mut Random) -> Snapshot,
+		) -> Sequence {
+			let mut tracker = track(initial.clone());
+			let mut out = Vec::new();
+			for _ in 0..commits {
+				let prepared = if rnd.next() < 0.03 {
+					tracker.prepare_replace(replace(rnd))
+				} else {
+					let mut change = tracker.begin_change();
+					for _ in 0..=rnd.int(4) {
+						mutate(change.state(), rnd);
+					}
+					change.prepare().unwrap()
+				};
+				tracker.adopt(&prepared).unwrap();
+				out.push((prepared.ops().clone(), tracker.value().clone()));
+			}
+			Sequence { initial, commits: out }
+		}
+
+		/// TS `diffSequence`: diffs between values, each an edit of the previous one (not sharing it, as TS edits a
+		/// `structuredClone`) or a new value.
+		fn diff_sequence(rnd: &mut Random, commits: usize) -> Sequence {
+			let initial = rnd.value(0);
+			let mut value = initial.clone();
+			let mut out = Vec::new();
+			for _ in 0..commits {
+				let mut tracker = track(Snapshot::object([("value".to_owned(), value.clone())]));
+				let mut change = tracker.begin_change();
+				for _ in 0..=rnd.int(3) {
+					mutate_anywhere(change.state(), rnd);
+				}
+				let edited = change.prepare().unwrap();
+				tracker.adopt(&edited).unwrap();
+				let next = if rnd.next() < 0.2 {
+					rnd.value(0)
+				} else {
+					let edited = tracker.value().get("value").cloned().unwrap_or_default();
+					Snapshot::from(&edited.to_value())
+				};
+				out.push((Arc::from(diff_revisions(&value, &next)), next.clone()));
+				value = next;
+			}
+			Sequence { initial, commits: out }
+		}
+
+		/// TS `checkSequence`: one queue, taken at random points; the replica, directly and through the codec, reaches
+		/// the final value. Returns (ops received, ops handed over).
+		fn check_sequence(sequence: &Sequence, rnd: &mut Random) -> (usize, usize) {
+			let mut queue = PendingOps::new();
+			let mut taken = Vec::new();
+			for (index, (ops, value)) in sequence.commits.iter().enumerate() {
+				queue.push(ops);
+				if rnd.next() < 0.1 || index == sequence.commits.len() - 1 {
+					taken.push((queue.take(), value.clone()));
+				}
+			}
+			let last = sequence.commits.last().map_or(&sequence.initial, |(_, value)| value);
+			let mut replica = sequence.initial.clone();
+			let mut encoder = Encoder::new();
+			let mut decoder = Decoder::new();
+			let mut remote = replay_wire(
+				&Snapshot::Null,
+				&[Op::Replace(replica.to_value())],
+				&mut encoder,
+				&mut decoder,
+			);
+			let mut folded = 0;
+			for (batch, value) in taken {
+				let ops: Vec<Op> = match batch {
+					PendingTake::Ops(ops) => ops.to_vec(),
+					PendingTake::Replace => vec![Op::Replace(value.to_value())],
+				};
+				folded += ops.len();
+				replica = apply_immutable(&replica, &ops).unwrap();
+				remote = replay_wire(&remote, &ops, &mut encoder, &mut decoder);
+			}
+			// TS `toEqual`: key order is not compared (`diff_revisions` ignores it, as TS does).
+			assert_eq!(replica, *last);
+			assert_eq!(remote, *last);
+			(sequence.commits.iter().map(|(ops, _)| ops.len()).sum(), folded)
+		}
+
+		/// Applies `ops` after a trip through the codec and JSON text, as a remote replica receives them.
+		fn replay_wire(replica: &Snapshot, ops: &[Op], encoder: &mut Encoder, decoder: &mut Decoder) -> Snapshot {
+			let frame = JsonValue::Array(encoder.encode(ops).into_iter().map(WireOp::into_json).collect());
+			let JsonValue::Array(received) = pi_json::parse(&to_js_string(&frame)).unwrap() else {
+				panic!("frame")
+			};
+			apply_immutable(replica, &decoder.decode_values(received).unwrap()).unwrap()
+		}
+
+		// TS: delta-pending.test.ts > PendingOps folding > is invisible to a replica: tracker edits anywhere,
+		// appendText, splices and reorders
+		#[test]
+		fn is_invisible_to_a_replica_tracker_edits_anywhere() {
+			let mut rnd = Random(1);
+			let (mut ops, mut folded) = (0, 0);
+			for _ in 0..800 {
+				let initial = rnd.root();
+				let commits = 1 + rnd.int(30);
+				let sequence = tracked_sequence(initial, commits, &mut rnd, mutate_anywhere, Random::root);
+				let (received, handed) = check_sequence(&sequence, &mut rnd);
+				ops += received;
+				folded += handed;
+			}
+			// The sequences fold: a fuzzer whose ops never merge proves nothing.
+			assert!(folded * 10 < ops * 9, "{folded} of {ops}");
+		}
+
+		// TS: delta-pending.test.ts > PendingOps folding > is invisible to a replica: leaf edits of list elements
+		// between splices and reorders of the list
+		#[test]
+		fn is_invisible_to_a_replica_leaf_edits_of_list_elements() {
+			let mut rnd = Random(2);
+			let (mut ops, mut folded) = (0, 0);
+			for _ in 0..800 {
+				let initial = Snapshot::from(&serde_json::json!({"list": [{"x": "a", "n": 0}, {"x": "b", "n": 1}]}));
+				let commits = 5 + rnd.int(40);
+				let empty = |_: &mut Random| Snapshot::from(&serde_json::json!({"list": []}));
+				let sequence = tracked_sequence(initial, commits, &mut rnd, mutate_list, empty);
+				let (received, handed) = check_sequence(&sequence, &mut rnd);
+				ops += received;
+				folded += handed;
+			}
+			assert!(folded * 10 < ops * 9, "{folded} of {ops}");
+		}
+
+		// TS: delta-pending.test.ts > PendingOps folding > is invisible to a replica: a root array
+		#[test]
+		fn is_invisible_to_a_replica_a_root_array() {
+			let mut rnd = Random(3);
+			let array = |rnd: &mut Random| {
+				let length = rnd.int(6);
+				Snapshot::array((0..length).map(|_| rnd.value(0)).collect())
+			};
+			for _ in 0..300 {
+				let initial = array(&mut rnd);
+				let sequence = tracked_sequence(initial, 40, &mut rnd, mutate_root_array, array);
+				check_sequence(&sequence, &mut rnd);
+			}
+		}
+
+		// TS: delta-pending.test.ts > PendingOps folding > is invisible to a replica: diffRevisions between arbitrary
+		// values
+		#[test]
+		fn is_invisible_to_a_replica_diff_revisions_between_arbitrary_values() {
+			let mut rnd = Random(4);
+			for _ in 0..500 {
+				let sequence = diff_sequence(&mut rnd, 30);
+				check_sequence(&sequence, &mut rnd);
+			}
+		}
+	}
 }

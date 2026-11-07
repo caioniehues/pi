@@ -36,6 +36,10 @@ rust-version = "1.99.1"
 allocation-counter = "=0.8.1"
 anyhow = "=1.0.104"
 getrandom = "=0.4.3"
+# SQLite with the library compiled in (`bundled`: no system libsqlite3, one SQLite version everywhere) and the
+# prepared-statement cache (`cache`) the Node driver's 256-statement LRU maps to. Default features off: they add a
+# WASM SQLite build. 0.40.2: the newest release older than two weeks (2026-08-08).
+rusqlite = { version = "=0.40.2", default-features = false, features = ["bundled", "cache"] }
 icu_normalizer = "=2.3.0"
 regress = "=0.12.0"
 ryu = "=1.0.23"

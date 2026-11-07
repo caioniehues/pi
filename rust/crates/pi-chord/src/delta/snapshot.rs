@@ -72,6 +72,26 @@ pub fn apply_immutable_trusted(target: &Snapshot, ops: &[Op]) -> Result<Snapshot
 	Ok(root)
 }
 
+impl From<JsonValue> for Snapshot {
+	/// The value as a snapshot, moving its strings and keys.
+	fn from(value: JsonValue) -> Self {
+		match value {
+			JsonValue::Null => Snapshot::Null,
+			JsonValue::Bool(flag) => Snapshot::Bool(flag),
+			JsonValue::Number(number) => Snapshot::Number(number),
+			JsonValue::String(text) => Snapshot::String(Arc::from(text)),
+			JsonValue::Array(items) => Snapshot::Array(Arc::new(items.into_iter().map(Snapshot::from).collect())),
+			JsonValue::Object(members) => Snapshot::Object(Arc::new(SnapshotObject {
+				entries: members
+					.into_iter()
+					.map(|(key, value)| (Arc::from(key), Snapshot::from(value)))
+					.collect(),
+				index: OnceLock::new(),
+			})),
+		}
+	}
+}
+
 impl From<&JsonValue> for Snapshot {
 	fn from(value: &JsonValue) -> Self {
 		match value {
@@ -92,6 +112,28 @@ impl From<&JsonValue> for Snapshot {
 }
 
 impl Snapshot {
+	/// An array of `items`, which stay shared with wherever else they are held.
+	pub fn array(items: Vec<Snapshot>) -> Self {
+		Snapshot::Array(Arc::new(items))
+	}
+
+	/// An object of `members` in order (a repeated key keeps its first position and its last value), sharing them.
+	pub fn object(members: impl IntoIterator<Item = (String, Snapshot)>) -> Self {
+		let mut object = SnapshotObject {
+			entries: Vec::new(),
+			index: OnceLock::new(),
+		};
+		for (key, value) in members {
+			object.insert(&key, value);
+		}
+		Snapshot::Object(Arc::new(object))
+	}
+
+	/// A string.
+	pub fn string(text: &str) -> Self {
+		Snapshot::String(Arc::from(text))
+	}
+
 	/// The value as an owned `JsonValue` (a deep copy).
 	pub fn to_value(&self) -> JsonValue {
 		match self {
@@ -172,11 +214,16 @@ impl PartialEq for Snapshot {
 			(Snapshot::Number(a), Snapshot::Number(b)) => a == b,
 			(Snapshot::String(a), Snapshot::String(b)) => a == b,
 			(Snapshot::Array(a), Snapshot::Array(b)) => a == b,
-			(Snapshot::Object(a), Snapshot::Object(b)) => {
-				a.len() == b.len() && a.iter().all(|(key, value)| b.get(key) == Some(value))
-			}
+			(Snapshot::Object(a), Snapshot::Object(b)) => a == b,
 			_ => false,
 		}
+	}
+}
+
+impl PartialEq for SnapshotObject {
+	/// Deep equality as sets of members, ignoring order.
+	fn eq(&self, other: &SnapshotObject) -> bool {
+		self.len() == other.len() && self.iter().all(|(key, value)| other.get(key) == Some(value))
 	}
 }
 
@@ -204,7 +251,8 @@ impl SnapshotObject {
 		self.entries.iter().map(|(key, value)| (&**key, value))
 	}
 
-	fn position(&self, key: &str) -> Option<usize> {
+	/// The position of member `key` in insertion order.
+	pub(crate) fn position(&self, key: &str) -> Option<usize> {
 		if self.entries.len() <= LINEAR_LOOKUP_MAX {
 			return self.entries.iter().position(|(member, _)| &**member == key);
 		}

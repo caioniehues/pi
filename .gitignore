@@ -49,3 +49,4 @@ packages/agent/docs/extensions/pi-server-artifact/index.md
 
 # Rust port
 rust/target/
+rust/fixtures/chord-delta/tracker-out.jsonl

@@ -151,51 +151,91 @@ Whoever defers something adds it here in the same change; a slice's spec include
   compiled schemas; the port compiles each pattern once per `compile` (and per `parse`/`errors` call, above). Add a
   shared cache if many tools repeat patterns (C2 review, 2026-11-06).
 
-### D0b
-
-- **`TelemetrySpan` from C1**: replace `pi_chord::context::TelemetrySpan` (a local trait with `add_event`,
-  `set_attributes`, `start_child`) with `pi_telemetry::TelemetrySpan`. `start_span` returns a
-  `Box<dyn TelemetrySpan>` that settles on `end` or drop; since pi-chord's `Context` records events and attributes on
-  its span, it holds `Arc<dyn pi_telemetry::TelemetrySpan>` (from the box; the span settles when the last clone drops)
-  or a recording handle of its own. `TelemetrySpan::handle()` alone is not enough: it is a plain context and loses
-  `add_event`/`set_attributes`. Add `trace_in` (TS `traceIn`, which needs `SpanOptions` and span ends) and port the
-  `traceIn` halves of `context.test.ts` (D0a, C1 review, 2026-11-06).
-- **Telemetry store conformance**: `packages/telemetry/test/store-conformance.ts` is shared by the in-memory and
-  the Chord SQLite stores. C1 ported its cases as in-memory tests (`pi-telemetry/tests/memory.rs`); with the SQLite
-  store, make them a reusable `pi_telemetry::testing` suite parameterised by a store factory, with an injectable clock
-  for the exact-time cases (C1, 2026-11-06).
-- **`PendingOps` fuzz tests**: `PendingOps` and its adversarial, cap, ownership, size and cost tests landed in D0a;
-  the four "PendingOps folding" fuzz tests of `delta-pending.test.ts` need the tracker and `diff_revisions`, so they
-  are D0b's. The folding rules are done; D0b changes them only if those tests show a difference (D0a, 2026-11-06).
-- **`overlap` counts UTF-16 code units**, as TS does (the corpus checks it); `append_text`'s prefix detection must
-  convert its result to a byte offset into the Rust string (D0a, 2026-11-06).
-- **Op payloads do not share containers with revisions**: ops hold `JsonValue` payloads, so a prepared change's ops
-  cannot share containers with the revision (TS README: payloads may be the same objects as parts of
-  `prepared.value`); measured memory of op backlogs plus revisions decides in D2b whether a `Snapshot`-payload op
-  representation is needed (D0a review, 2026-11-06).
-- **Tracker-dependent tests**: port `delta-apply-immutable.test.ts` "handles tracker-produced batches across arbitrary
-  revision boundaries" with the tracker (D0a, 2026-11-06).
-- **A direct `Snapshot` serializer**: snapshot bytes go through `to_value` and `pi_json::to_js_string` (a deep copy);
-  write a serializer over `Snapshot` if the watch or sqlite ports need it (D0a review, 2026-11-06).
-- **Appending to a `Snapshot` string copies it**: strings are `Arc<str>`, so each `a` applied to a snapshot costs the
-  string's whole length (V8 appends to a rope in O(chunk)), and N appends to one string cost O(N x length). Measure
-  with the watch and output ports; if streamed output makes it show, give `Snapshot` a chunked string (D0a,
-  2026-11-06).
-
 ### D1
 
+- **`TelemetrySpan` from C1**: replace `pi_chord::context::TelemetrySpan` (a local trait with `add_event`,
+  `set_attributes`, `start_child`) with the landed `pi_telemetry::TelemetrySpan`. In pi-telemetry,
+  `TelemetrySpan: TelemetryContext`, `start_span` returns a `Box<dyn TelemetrySpan>`, the span settles on
+  `end(self: Box<Self>)` or drop, and `handle()` returns an `Arc<dyn TelemetryContext>` without `add_event` or
+  `set_attributes`. Since `Context` records events and attributes on its span, it holds `Arc<dyn TelemetrySpan>`
+  (made from the box; the span settles when the last clone drops) or a recording handle of its own; `handle()` alone
+  is not enough. Add `trace_in` (TS `traceIn`, with `SpanOptions` and span ends) and port the `traceIn` halves of
+  `context.test.ts` (D0a, C1 review, 2026-11-06; D0b, 2026-11-07).
+- **Abort callbacks for watches**: a `CancellationToken` has no callback, so `Watch::observe_abort` is observed by the
+  futures that wait on the watch (delivery and `closed`); an aborted watch nobody waits on ends, and detaches, on the
+  next poll. When `AbortSignal` gets its reason, give it a way to run a callback on abort (or a spawner) so a watch
+  ends the moment its context is aborted, as in TS (D0b, 2026-11-07).
+- **Object safety of the watch and SQLite traits**: `WatchHandle`, `NativeWatchHandle`, `Watchable`,
+  `NativeWatchable`, `SqliteExecutor` and `SqliteDatabase` are not object-safe (generic `start` and `transaction`,
+  `impl Future` returns). Durable decides whether it needs boxed (`dyn`) versions and adds them (D0b review,
+  2026-11-07).
 - **Abort reasons**: `AbortSignal` carries no reason; Durable's `harness/util.ts:11,19`, `codemode/codemode.ts:464` and
   Chord's remote provider need `signal.reason`: give `AbortSignal` an optional reason (a `ChordError`-like value) set
   at cancellation in D1 (D0a review, 2026-11-06).
 
+### D2b
+
+- **Op payloads do not share containers with revisions**: ops hold `JsonValue` payloads, so a prepared change's ops
+  cannot share containers with the revision (TS README: payloads may be the same objects as parts of
+  `prepared.value`); measured memory of op backlogs plus revisions decides whether a `Snapshot`-payload op
+  representation is needed (D0a review, 2026-11-06).
+- **Appending to a `Snapshot` string copies it**: strings are `Arc<str>`, so each `append_text` copies the string and
+  N appends to one string cost O(N x length). Measured in D0b: a 500 KB stream in 40-byte chunks (12,500 changes, one
+  tracker change each) takes 0.35 s in a debug build, 0.28 s in release. If Durable's streamed output shows it, give
+  `Snapshot` a chunked string (D0a, measured D0b, 2026-11-07).
+
+- **Per-change cost grows with the width of every container on the path**: an edit copies each container on its path
+  (`Arc::make_mut`, O(width) for the first edit of a revision) and `prepare` scans each of them (O(width) diff), where
+  the TS overlay costs O(edits). Measured by the D0b review, 2,000 changes of one append each:
+
+  | Container on the path | Time |
+  | --- | --- |
+  | array of 10,000 elements | 0.197 s |
+  | object of 10,000 keys | 1.63 s |
+
+  Durable's documents with wide arrays or maps (conversation entries, task records) pay this per change; if a session
+  shows it, track dirty children in the draft so the diff visits only them, and give wide containers a persistent
+  (chunked) representation so the copy is O(log width) (D0b review, 2026-11-07).
+
+### D3
+
+- **A direct `Snapshot` serializer**: snapshot bytes go through `to_value` and `pi_json::to_js_string` (a deep copy);
+  the watch and sqlite ports of D0b did not need one. Write a serializer over `Snapshot` if jsonl or sqlite storage
+  measures the copy (D0a review, 2026-11-06).
+
+### D6a
+
+- **A runtime for `Progress`**: `pi_chord::output::Progress` paces on a `ProgressClock` that also spawns the commit
+  future (TS uses `Date.now`, `setTimeout` and the event loop); pi-chord has no runtime, so there is no default clock.
+  Durable's harness supplies a tokio-backed one (D0b, 2026-11-07).
+
 ### After C25
 
+- **Telemetry store conformance** (out of scope): `packages/telemetry/test/store-conformance.ts` is shared by the
+  in-memory and the Chord SQLite telemetry stores. C1 ported its cases as in-memory tests
+  (`pi-telemetry/tests/memory.rs`); no planned slice builds Chord's SQLite telemetry store, so the reusable
+  `pi_telemetry::testing` suite (parameterised by a store factory, with an injectable clock for the exact-time cases)
+  waits until a slice needs that store; if Durable does, move this entry to that slice (C1, 2026-11-06; filed by the
+  D0b review, 2026-11-07).
 - **llama.cpp built-in** (`packages/coding-agent/src/extensions/llama/`, 1.6k lines): provider, `/llama` command,
   Hugging Face downloads, TUI. Deferred by the owner (2026-11-06).
 - **Dynamic extension loading**: `pi-ext-loader` (shared objects or WASM) if wanted; all SDK traits stay object-safe
   and `Send + Sync` so this remains possible (plan, 2026-11-06).
 - **Windows PowerShell tool and `clip.exe` paths** are built in C9/C23 but only type-checked, not run, until a Windows
   machine is available (plan, 2026-11-06).
+
+## Resolved points
+
+- **The Rust tracker's op batches** (D0b, 2026-11-07; spec `slices/D0b.md`): the TS tracker is a `Proxy` over a piece
+  table; Rust has an explicit `Draft` API over a copy-on-write `Snapshot`, diffed against its base at `prepare` with
+  the draft's hints (the text of each `append_text`, the base position of each element of a structurally edited array,
+  whole placements). Ops need not match TS batches byte for byte: they must replay under the TS `apply` and
+  `applyImmutable` to the prepared value, be valid ops, come from the value the TS draft reaches, and be reasonably
+  minimal (`append_text` one `a`, a `set` one `s`, a `push` one `p`, an element edited in place still diffed in place
+  after its array was spliced or reordered, no root replacement but `prepare_replace` or past 4,096 ops). The
+  cross-apply corpus (`fixtures/chord-delta/tracker-scripts.jsonl`, `check-tracker-out.mjs`) checks all of it against
+  the TS implementation. As the TS tracker, the Rust one replays a key deleted and set again with `d` and `s`; as TS
+  `diffRevisions`, `diff_revisions` ignores key order (D0b review, 2026-11-07).
 
 ## Decided divergences
 
