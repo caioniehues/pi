@@ -33,6 +33,8 @@ existing Rust crate) and the Chord v2 code style in `AGENTS.md`, carried over to
   comment `// TS parity:` with the reason, unless the slice spec says otherwise.
 - Every byte that reaches a file or a wire goes through `pi_json::to_js_string` (JSON) or `pi_json::iso_ms`
   (timestamps), never through `serde_json::to_string` directly.
+- Every JSON text read from a file or a wire goes through `pi_json::parse`, never `serde_json::from_str` directly: it
+  maps lone surrogate escapes to U+FFFD (decided 2026-11-06, D0a review).
 - Fixtures generated from TS are generated at the pinned commit in `rust/tools/pi-difftest/TS_PIN` (until that file
   exists: the commit `rust-port` branched from, `085c84e98`). The generator script is committed next to the fixture.
 

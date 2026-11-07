@@ -1,7 +1,7 @@
 //! The Node-generated corpus (`rust/fixtures/json/gen.mjs`): every record must come out byte-identical.
 
 use anyhow::{Context, Result, ensure};
-use pi_json::{JsonValue, iso_ms, js_number_to_string, parse_iso_ms, to_js_string, to_js_string_pretty};
+use pi_json::{JsonValue, iso_ms, js_number_to_string, parse, parse_iso_ms, to_js_string, to_js_string_pretty};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 fn records(name: &str) -> Result<Vec<JsonValue>> {
@@ -9,7 +9,7 @@ fn records(name: &str) -> Result<Vec<JsonValue>> {
 	let text = std::fs::read_to_string(&path).with_context(|| format!("reading {path}"))?;
 	text.lines()
 		.enumerate()
-		.map(|(index, line)| serde_json::from_str(line).with_context(|| format!("{name}:{}", index + 1)))
+		.map(|(index, line)| parse(line).with_context(|| format!("{name}:{}", index + 1)))
 		.collect()
 }
 

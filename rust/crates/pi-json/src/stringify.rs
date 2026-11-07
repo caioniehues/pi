@@ -175,8 +175,7 @@ mod tests {
 
 	#[test]
 	fn index_keys_come_first_in_ascending_order() {
-		let value: serde_json::Value =
-			serde_json::from_str(r#"{"b":1,"10":2,"a":3,"2":4,"4294967295":5,"01":6}"#).unwrap();
+		let value: serde_json::Value = crate::parse(r#"{"b":1,"10":2,"a":3,"2":4,"4294967295":5,"01":6}"#).unwrap();
 		assert_eq!(
 			to_js_string(&value),
 			r#"{"2":4,"10":2,"b":1,"a":3,"4294967295":5,"01":6}"#

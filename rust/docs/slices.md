@@ -73,6 +73,11 @@ includes every entry of its section; a done entry is deleted.
 Obligations a slice deliberately left to a later one, under the slice that must do them, with where they came from.
 Whoever defers something adds it here in the same change; a slice's spec includes every entry of its section.
 
+### C1
+
+- **Lenient surrogates**: pi-types tests and readers must use `pi_json::parse` (lenient surrogates), not
+  `serde_json::from_str` (D0a review, 2026-11-06).
+
 ### C18b
 
 - **Mermaid rendering**: diagrams render as a fenced code block; an ANSI renderer port of `lovely-mermaid` only if the
@@ -88,6 +93,35 @@ Whoever defers something adds it here in the same change; a slice's spec include
   proleptic Gregorian date instead of failing. Acceptable while every `SystemTime` comes from a JS-range source;
   revisit if one can come from elsewhere (C0, 2026-11-06).
 
+### D0b
+
+- **`TelemetrySpan` from C1**: replace `pi_chord::context::TelemetrySpan` (a local trait with `add_event`,
+  `set_attributes`, `start_child`) with `pi_telemetry::TelemetrySpan` once C1 has landed, add `trace_in` (TS `traceIn`,
+  which needs `SpanOptions` and span ends), and port the `traceIn` halves of `context.test.ts` (D0a, 2026-11-06).
+- **`PendingOps` fuzz tests**: `PendingOps` and its adversarial, cap, ownership, size and cost tests landed in D0a;
+  the four "PendingOps folding" fuzz tests of `delta-pending.test.ts` need the tracker and `diff_revisions`, so they
+  are D0b's. The folding rules are done; D0b changes them only if those tests show a difference (D0a, 2026-11-06).
+- **`overlap` counts UTF-16 code units**, as TS does (the corpus checks it); `append_text`'s prefix detection must
+  convert its result to a byte offset into the Rust string (D0a, 2026-11-06).
+- **Op payloads do not share containers with revisions**: ops hold `JsonValue` payloads, so a prepared change's ops
+  cannot share containers with the revision (TS README: payloads may be the same objects as parts of
+  `prepared.value`); measured memory of op backlogs plus revisions decides in D2b whether a `Snapshot`-payload op
+  representation is needed (D0a review, 2026-11-06).
+- **Tracker-dependent tests**: port `delta-apply-immutable.test.ts` "handles tracker-produced batches across arbitrary
+  revision boundaries" with the tracker (D0a, 2026-11-06).
+- **A direct `Snapshot` serializer**: snapshot bytes go through `to_value` and `pi_json::to_js_string` (a deep copy);
+  write a serializer over `Snapshot` if the watch or sqlite ports need it (D0a review, 2026-11-06).
+- **Appending to a `Snapshot` string copies it**: strings are `Arc<str>`, so each `a` applied to a snapshot costs the
+  string's whole length (V8 appends to a rope in O(chunk)), and N appends to one string cost O(N x length). Measure
+  with the watch and output ports; if streamed output makes it show, give `Snapshot` a chunked string (D0a,
+  2026-11-06).
+
+### D1
+
+- **Abort reasons**: `AbortSignal` carries no reason; Durable's `harness/util.ts:11,19`, `codemode/codemode.ts:464` and
+  Chord's remote provider need `signal.reason`: give `AbortSignal` an optional reason (a `ChordError`-like value) set
+  at cancellation in D1 (D0a review, 2026-11-06).
+
 ### After C25
 
 - **llama.cpp built-in** (`packages/coding-agent/src/extensions/llama/`, 1.6k lines): provider, `/llama` command,
@@ -96,3 +130,17 @@ Whoever defers something adds it here in the same change; a slice's spec include
   and `Send + Sync` so this remains possible (plan, 2026-11-06).
 - **Windows PowerShell tool and `clip.exe` paths** are built in C9/C23 but only type-checked, not run, until a Windows
   machine is available (plan, 2026-11-06).
+
+## Decided divergences
+
+Behaviour of the Rust port that deliberately differs from the TS reference, with the decision that settled it.
+
+- **Lone surrogates read as U+FFFD** (D0a review, 2026-11-06): a JS string may hold an unpaired UTF-16 surrogate and
+  `JSON.stringify` writes it as an escape; `serde_json` rejects such text. `pi_json::parse` maps every lone surrogate
+  escape to U+FFFD and never fails on one, so a pair split across two `a` ops and joined by TS reads as two U+FFFD in
+  Rust. Well-formed text round-trips exactly. Likewise a `t` count that cuts a surrogate pair leaves U+FFFD where JS
+  leaves the low half (`pi_chord::delta`, D0a).
+- **Integers of 2^64 and more in ops** (D0a, 2026-11-06): TS accepts any non-negative integral number; `pi-chord`
+  rejects those of 2^64 and more with the TS message of the field (path segments, `t` counts, `p` index and remove
+  count, `#` ids and path ids, permutation entries). No producer writes one. Indices above 2^53 stay exact where a JS
+  number rounds them, so an index segment on an object names the key of its exact digits.
