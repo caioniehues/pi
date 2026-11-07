@@ -53,8 +53,8 @@ includes every entry of its section; a done entry is deleted.
 | # | Slice | Crates | Status |
 | --- | --- | --- | --- |
 | D0a | chord: context, json, delta ops | `pi-chord` | done |
-| D0b | chord: tracker, diff, watch, output, sqlite | `pi-chord` | building |
-| D1 | Durable types, memory storage, storage conformance | `pi-durable` | planned |
+| D0b | chord: tracker, diff, watch, output, sqlite | `pi-chord` | done |
+| D1 | Durable types, memory storage, storage conformance | `pi-durable` | building |
 | D2a | Session I | `pi-durable` | planned |
 | D2b | Session II | `pi-durable` | planned |
 | D3 | jsonl + sqlite storage | `pi-durable` | planned |

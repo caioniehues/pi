@@ -31,7 +31,7 @@ this decision in the file comment and in `rust/docs/slices.md` under D0b as a re
   the error the TS throws for), `Change` with `state() -> &mut Draft` and `prepare() -> Prepared { base, value, ops }`,
   `Draft`: `get(path)`, `set(path, value)`, `delete(path)`, `append_text(path, text)` (with `overlap` detection
   of already-present prefixes as `appendText` does), arrays: `push`, `pop`, `shift`, `unshift`, `splice`,
-  `reverse`, `sort_by`, `fill`, `copy_within`, `set_index`, `truncate_len`; `undefined` rules become
+  `reverse`, `sort_by`, `fill`, `copy_within`, `set_index`, `set_len`; `undefined` rules become
   `Option`: `set(path, None)` deletes a key and is an error inside arrays. Placed values are owned (no aliasing
   concerns in Rust); validation of strict JSON is unnecessary because `JsonValue` is strict by construction.
 - `delta/diff.rs`: `diff_revisions(before, after) -> Vec<Op>` with the same heuristics as TS where they decide
