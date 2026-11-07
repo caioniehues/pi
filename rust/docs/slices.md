@@ -32,7 +32,7 @@ includes every entry of its section; a done entry is deleted.
 | C13a | Providers II (responses, azure, codex, google, vertex, pi-messages) | `pi-ai` | planned |
 | C13b | Provider definitions + OAuth I | `pi-ai` | planned |
 | C14 | Providers III (bedrock, mistral, images, classifiers, OAuth II, remote catalog) | `pi-ai`, `pi-core` | planned |
-| C15a | pi-tui I (terminal, keys, width, colors, layout) | `pi-tui` | planned |
+| C15a | pi-tui I (terminal, keys, width, colors, layout) | `pi-tui` | building |
 | C15b | pi-tui II (components, renderers) | `pi-tui` | planned |
 | C16a | Markdown, highlighting, images | `pi-tui` | planned |
 | C16b | Editor, clipboard | `pi-tui` | planned |
