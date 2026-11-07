@@ -15,7 +15,7 @@ includes every entry of its section; a done entry is deleted.
 | --- | --- | --- | --- |
 | C0 | Workspace bootstrap, `pi-json`, xtask, `check.sh` | all skeletons, `pi-json`, `xtask` | done |
 | C1 | Shared types + telemetry | `pi-types`, `pi-telemetry` | building |
-| C2 | pi-schema | `pi-schema` | building |
+| C2 | pi-schema | `pi-schema` | done |
 | C3a | pi-ai core: catalog, registry, auth resolution, streams, transcript, retry, faux provider | `pi-ai` | planned |
 | C3b | pi-ai wire APIs anthropic-messages and openai-completions | `pi-ai` | planned |
 | C4 | Fake provider server + difftest driver, goldens from TS | `pi-fake-provider`, `pi-difftest` | planned |
