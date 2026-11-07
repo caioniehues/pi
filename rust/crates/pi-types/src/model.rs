@@ -2,6 +2,7 @@
 //! and `packages/ai/src/providers/model-schema.ts`). Field order follows the catalog writer
 //! (`packages/ai/catalog/define.ts`): the fields it sets first, then the ones provider maps add.
 
+use crate::compat::{ModelCompat, SystemOneCompat};
 use crate::literal::tag_type;
 use crate::record::Record;
 use pi_json::JsonObject;
@@ -248,7 +249,7 @@ tag_type!(
 
 /// A chat model: usable with the stream functions.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", from = "ModelWire")]
 pub struct Model {
 	/// The provider's model id.
 	pub id: String,
@@ -276,9 +277,9 @@ pub struct Model {
 	/// Extra HTTP headers.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub headers: Option<Record<String>>,
-	/// API compatibility overrides; typed per API by `pi-ai` (C3).
+	/// API compatibility overrides, typed by `api`.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub compat: Option<JsonObject>,
+	pub compat: Option<ModelCompat>,
 	/// Provider values per thinking level.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub thinking_level_map: Option<ThinkingLevelMap>,
@@ -297,6 +298,67 @@ pub struct Model {
 	/// Fields this port does not know, kept for the round trip.
 	#[serde(flatten)]
 	pub extra: JsonObject,
+}
+
+/// `Model` as read: `compat` stays an object until `api` is known, since serde cannot type a field by a sibling.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ModelWire {
+	id: String,
+	name: String,
+	api: String,
+	provider: String,
+	base_url: String,
+	#[serde(rename = "type", default)]
+	model_type: Option<ChatModelType>,
+	reasoning: bool,
+	input: Vec<ModelInputModality>,
+	cost: ModelCost,
+	context_window: u64,
+	max_tokens: u64,
+	#[serde(default)]
+	headers: Option<Record<String>>,
+	#[serde(default)]
+	compat: Option<JsonObject>,
+	#[serde(default)]
+	thinking_level_map: Option<ThinkingLevelMap>,
+	#[serde(default)]
+	prompt_cache: Option<ModelPromptCache>,
+	#[serde(default)]
+	input_limits: Option<ModelInputLimits>,
+	#[serde(default)]
+	sampling_params: Option<JsonObject>,
+	#[serde(default)]
+	sampling_params_by_thinking_level: Option<Record<JsonObject>>,
+	#[serde(flatten)]
+	extra: JsonObject,
+}
+
+impl From<ModelWire> for Model {
+	fn from(wire: ModelWire) -> Self {
+		let compat = wire.compat.map(|object| ModelCompat::for_api(&wire.api, object));
+		Self {
+			id: wire.id,
+			name: wire.name,
+			api: wire.api,
+			provider: wire.provider,
+			base_url: wire.base_url,
+			model_type: wire.model_type,
+			reasoning: wire.reasoning,
+			input: wire.input,
+			cost: wire.cost,
+			context_window: wire.context_window,
+			max_tokens: wire.max_tokens,
+			headers: wire.headers,
+			compat,
+			thinking_level_map: wire.thinking_level_map,
+			prompt_cache: wire.prompt_cache,
+			input_limits: wire.input_limits,
+			sampling_params: wire.sampling_params,
+			sampling_params_by_thinking_level: wire.sampling_params_by_thinking_level,
+			extra: wire.extra,
+		}
+	}
 }
 
 tag_type!(
@@ -372,9 +434,13 @@ pub struct ClassifierModel {
 	/// Extra HTTP headers.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub headers: Option<Record<String>>,
-	/// System One compatibility overrides; typed by `pi-ai` (C14).
-	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub compat: Option<JsonObject>,
+	/// System One compatibility overrides, read field by field.
+	#[serde(
+		default,
+		skip_serializing_if = "Option::is_none",
+		deserialize_with = "crate::compat::optional_fields"
+	)]
+	pub compat: Option<SystemOneCompat>,
 	/// Fields this port does not know, kept for the round trip.
 	#[serde(flatten)]
 	pub extra: JsonObject,

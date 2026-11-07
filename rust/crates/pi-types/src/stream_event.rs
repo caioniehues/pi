@@ -5,6 +5,7 @@ use crate::content::ToolCall;
 use crate::message::AssistantMessage;
 use pi_json::{JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// Why a response stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -98,8 +99,8 @@ pub enum KnownAssistantMessageEvent {
 /// `start`: the response so far.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StreamStart {
-	/// The response so far (a live object in TS, a snapshot here).
-	pub partial: AssistantMessage,
+	/// The response so far: a live object in TS, a snapshot taken at push time here (see `pi-ai`'s event stream).
+	pub partial: Arc<AssistantMessage>,
 	/// Fields this port does not know, kept for the round trip.
 	#[serde(flatten)]
 	pub extra: JsonObject,
@@ -111,8 +112,8 @@ pub struct StreamStart {
 pub struct ContentStart {
 	/// The index of the block in `partial.content`.
 	pub content_index: u64,
-	/// The response so far.
-	pub partial: AssistantMessage,
+	/// The response so far, a snapshot taken at push time.
+	pub partial: Arc<AssistantMessage>,
 	/// Fields this port does not know, kept for the round trip.
 	#[serde(flatten)]
 	pub extra: JsonObject,
@@ -126,8 +127,8 @@ pub struct ContentDelta {
 	pub content_index: u64,
 	/// The appended text.
 	pub delta: String,
-	/// The response so far.
-	pub partial: AssistantMessage,
+	/// The response so far, a snapshot taken at push time.
+	pub partial: Arc<AssistantMessage>,
 	/// Fields this port does not know, kept for the round trip.
 	#[serde(flatten)]
 	pub extra: JsonObject,
@@ -141,8 +142,8 @@ pub struct ContentEnd {
 	pub content_index: u64,
 	/// The block's authoritative content.
 	pub content: String,
-	/// The response so far.
-	pub partial: AssistantMessage,
+	/// The response so far, a snapshot taken at push time.
+	pub partial: Arc<AssistantMessage>,
 	/// Fields this port does not know, kept for the round trip.
 	#[serde(flatten)]
 	pub extra: JsonObject,
@@ -156,8 +157,8 @@ pub struct ToolCallEnd {
 	pub content_index: u64,
 	/// The complete tool call.
 	pub tool_call: ToolCall,
-	/// The response so far.
-	pub partial: AssistantMessage,
+	/// The response so far, a snapshot taken at push time.
+	pub partial: Arc<AssistantMessage>,
 	/// Fields this port does not know, kept for the round trip.
 	#[serde(flatten)]
 	pub extra: JsonObject,

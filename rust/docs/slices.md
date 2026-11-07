@@ -89,6 +89,29 @@ Whoever defers something adds it here in the same change; a slice's spec include
   `x-api-key`/`authorization`, pi's identity and attribution headers). C3b matches the URL, the body key order
   and those headers; the SDK and undici headers are not reproduced (see "Decided divergences") (C4 review,
   2026-11-07).
+- **Wire plumbing from C3a**: SSE bodies go through `pi_ai::sse::SseDecoder`, requests through `pi_ai::http::Fetch`
+  (`ProviderRequestOptions::fetch` or `http::default_fetch()`), retries through `retry_provider_request` (implement
+  `ProviderRequestError` for the API's HTTP errors), error display through `error_body::SdkError` and
+  `format_provider_error`. An API's own options (`AnthropicOptions`, ...) travel in `StreamOptions::api_options`
+  (`Arc<dyn Any>`), downcast by the API. Provider-scoped proxy variables (`ProviderEnv` `HTTP_PROXY`/`HTTPS_PROXY`)
+  are not applied by `http.rs` (it reads the process environment); decide per API whether a scoped client is needed.
+  reqwest exposes no happy-eyeballs attempt timeout (the dispatcher's 2 seconds) (C3a, 2026-11-07).
+- **Tests C3a left for the wire APIs**: `sampling-options.test.ts`, `xhigh.test.ts`, the "client identity in
+  requests" header-capture cases of `identity.test.ts`, the real `openai` SDK connection-failure case of
+  `error-body.test.ts`, the anthropic and openai-completions payload cases of `transcript-tool-changes.test.ts`, the
+  anthropic and openai-completions paths of `streaming-tool-arguments.test.ts` and its "tool-call stream state on
+  errors" case. The live suites (`context-overflow`, `tokens`, `total-tokens`, `unicode-surrogate`,
+  `cross-provider-handoff`, the live parts of `tool-call-id-normalization`) need wire APIs and keys; C3a did not
+  port them; port them `#[ignore]`d with the env var they need, for the providers each slice adds (C3a, 2026-11-07).
+
+### C7
+
+- **models.json validation schemas**: `compat-schema.ts` and `model-schema.ts` as JSON Schemas (with their `default`
+  annotations and the `ProviderCompatSchema` superset) for validating models.json through pi-schema, and the port of
+  `compat-schema.test.ts`; C3a typed the compat objects (`pi_types::compat`) but did not port the schemas (C3a,
+  2026-11-07).
+- **Credential store**: the `auth.json` store implements `pi_ai::auth::types::CredentialStore`; `modify` must cancel
+  only the wait for its lock (Models relies on it through `modify_once_started`) (C3a, 2026-11-07).
 
 ### C8
 
@@ -113,6 +136,13 @@ Whoever defers something adds it here in the same change; a slice's spec include
 
 ### C12
 
+- **Release builds need model data**: `check.sh`'s release build and the packaging must have hydrated model data:
+  a release build where `pi_ai::catalog::is_hydrated()` is false must fail (C12 for the `pi` binary's build, C25 for
+  packaging) (C3a review, 2026-11-07).
+- **Typed compat key order**: `pi_types::Model.compat` is typed per API (`ModelCompat`); its fields serialize in the
+  schema's order, then unknown keys, while the catalog writes compat keys in varying orders, so a re-serialized model
+  (RPC `get_available_models`, the models store) can order `compat` differently from TS, and the difftest compares
+  lines as text. Keep the read order when writing models (C3a, 2026-11-07).
 - **Ids the difftest normalizer maps**: entry ids must be 8 lowercase hex characters and session ids UUIDs (as TS
   makes them), or the normalizer leaves them raw and every golden differs (C4 review, 2026-11-07).
 - **Difftest environment**: the driver runs pi with only `PATH`, `HOME`, `PI_CODING_AGENT_DIR`, `PI_PACKAGE_DIR`
@@ -124,18 +154,21 @@ Whoever defers something adds it here in the same change; a slice's spec include
   `Unknown command: <type>`, so it reads `id` and `type` from the raw object before typed parsing (C1 review,
   2026-11-06).
 
-### C3a
-
-- **Tool-call arguments with unpaired surrogates**: decided in D0a: `pi_json::parse` parses leniently and maps a lone
-  surrogate escape (`"\ud800"`) to U+FFFD, where `serde_json` rejects it and `JSON.parse` keeps it. pi-ai's argument
-  parsing must go through `pi_json::parse`. One unpaired surrogate and U+FFFD both count as one code point, so
-  pi-schema's length checks agree with TS (C2 review, 2026-11-06).
-
 ### C13a
 
+- **Responses-path tests from C3a**: the Responses cases of `constrained-sampling.test.ts` (convertResponsesTools,
+  replayed grammar calls, custom tool input streaming), the Codex payload case of `max-thinking.test.ts`, the Responses
+  and pi-messages paths of `streaming-tool-arguments.test.ts` and the Responses payload cases of
+  `transcript-tool-changes.test.ts` (C3a, 2026-11-07).
 - **Fake provider `/v1/responses`**: the route exists and answers 501; add the openai-responses SSE renderer
   (`packages/ai/src/api/openai-responses-shared.ts`) beside `anthropic.rs` and `openai_completions.rs`, and the
   API to `ALL_APIS` in pi-difftest (C4, 2026-11-07).
+
+### C13b
+
+- **OAuth flows**: the provider cases of `oauth-auth.test.ts` (Anthropic, Codex, OpenRouter, xAI, GitHub Copilot
+  `toAuth`/`refresh`); C3a ported the `Models::get_auth` resolve chain with a test adapter. TS's `lazyOAuth` has no
+  port (Rust links the flows) (C3a, 2026-11-07).
 
 ### C18b
 
@@ -167,6 +200,21 @@ Whoever defers something adds it here in the same change; a slice's spec include
 - **No shared regex cache across validators**: TS's `sharedRegex` shares one `RegExp` per pattern source across all
   compiled schemas; the port compiles each pattern once per `compile` (and per `parse`/`errors` call, above). Add a
   shared cache if many tools repeat patterns (C2 review, 2026-11-06).
+- **Assistant partial snapshots**: events carry `Arc<AssistantMessage>`; an edit copies the message while a queued
+  event still holds the previous snapshot, so a lagging consumer pays one message copy per edit (O(n^2) for a long
+  response). Measure with the agent loop; give content blocks shared storage if it shows (C3a, 2026-11-07).
+- **Streaming JSON snapshot cost**: snapshots copy strings and completed containers (a JS snapshot shares them), so
+  the copy credit counts bytes and a large document's preview lags behind its text (bounded, linear total work).
+  serde_json recurses on clone and drop, so values nested a few thousand levels deep overflow the stack (the parser
+  itself does not recurse; `pi_json::parse` stops at 128 levels) (C3a, 2026-11-07).
+- **Tool validation compiles per call**: `validate_tool_arguments` compiles the schema on every call (TS caches per
+  schema object in a `WeakMap`); cache per tool if profiles show it (C3a, 2026-11-07).
+
+### C25
+
+- **Release builds need model data**: without hydrated data `pi-ai`'s build.rs warns and embeds an empty catalog (so
+  slices build in clean checkouts); packaging must hydrate first and fail a release build that has no catalog (C3a,
+  2026-11-07).
 
 ### D1
 
@@ -275,3 +323,19 @@ Behaviour of the Rust port that deliberately differs from the TS reference, with
 - **Malformed A-labels in URL hosts** (C2 review, 2026-11-06): the `url`, `iri` and `iri-reference` formats reject
   hosts with malformed A-labels (`http://xn--a.com/`, `http://xn--/`, `http://xn--ab-.com`) that Node's
   `URL.canParse` accepts; the `url` crate validates IDNA strictly. Hostile input only (`pi_schema::formats`, C2).
+- **Streaming JSON lone surrogates** (C3a, 2026-11-07): `StreamingJsonParser` holds a `\uD800`-`\uDBFF` escape back
+  until the next escape shows whether it pairs, and a lone one reads as U+FFFD; TS shows the lone high surrogate while
+  its low half is pending. Numbers `f64` cannot hold (`1e400`) are dropped where JS shows `Infinity`.
+- **JSON parse error messages** (C3a, 2026-11-07): `argumentsError` and other parse failures carry serde_json's
+  message (`EOF while parsing a string at line 1 column 9`) where TS carries V8's.
+- **User-Agent runtime** (C3a, 2026-11-07): the detailed `User-Agent` is `pi/<version> (<platform>; rust/<rustc
+  version>; <arch>)` with Node's platform and arch names, where TS names `node/<version>`.
+- **Same-origin redirects only** (C3a review, 2026-11-07): undici's fetch follows up to 20 redirects and strips
+  `authorization`, `proxy-authorization`, `cookie` and `host` when the origin changes (scheme included); reqwest's
+  default policy strips sensitive headers only on a host or port change; neither strips `x-api-key`-style headers.
+  The port's client (`pi_ai::http`) therefore follows redirects only to the same origin (scheme, host, port), up to
+  20, and returns a cross-origin 3xx as the response.
+- **Ill-typed compat fields** (C3a review, 2026-11-07): `pi_types::compat` reads compat objects field by field; a
+  field whose value does not fit its type (`"supportsStore": "yes"`) is kept raw in `extra` and reads as unset, where
+  TS casts the object and uses the ill-typed value as it is (a truthy string enables the flag). The valid fields read
+  as in TS.

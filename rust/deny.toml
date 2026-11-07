@@ -12,13 +12,14 @@ ignore = []
 allow = [
 	"MIT", # pi-* crates (workspace license), anyhow, serde_json
 	"Apache-2.0", # ryu (Apache-2.0 OR BSL-1.0)
-	"Apache-2.0 WITH LLVM-exception", # unused
+	"Apache-2.0 WITH LLVM-exception", # wasi (via getrandom 0.2, via ring)
 	"BSD-2-Clause", # unused
-	"BSD-3-Clause", # unused
-	"ISC", # unused
+	"BSD-3-Clause", # subtle (via rustls)
+	"ISC", # ring, rustls-webpki, untrusted (via reqwest rustls-tls)
 	"Zlib", # foldhash (via serde_json preserve_order)
 	"Unicode-3.0", # unicode-ident (via thiserror-impl)
 	"MPL-2.0", # unused
+	"CDLA-Permissive-2.0", # webpki-roots (via reqwest rustls-tls): the Mozilla root certificates Node also bundles
 ]
 confidence-threshold = 0.9
 unused-allowed-license = "allow"

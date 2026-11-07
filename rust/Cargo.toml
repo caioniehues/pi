@@ -35,23 +35,27 @@ rust-version = "1.99.1"
 [workspace.dependencies]
 allocation-counter = "=0.8.1"
 anyhow = "=1.0.104"
+async-trait = "=0.1.92"
 axum = { version = "=0.8.9", default-features = false }
 bytes = "=1.12.1"
-futures-util = { version = "=0.3.34", default-features = false }
+futures-core = "=0.3.34"
+futures-util = { version = "=0.3.34", default-features = false, features = ["std"] }
 getrandom = "=0.4.3"
+http = "=1.5.0"
 # SQLite with the library compiled in (`bundled`: no system libsqlite3, one SQLite version everywhere) and the
 # prepared-statement cache (`cache`) the Node driver's 256-statement LRU maps to. Default features off: they add a
 # WASM SQLite build. 0.40.2: the newest release older than two weeks (2026-08-08).
 rusqlite = { version = "=0.40.2", default-features = false, features = ["bundled", "cache"] }
 icu_normalizer = "=2.3.0"
 regress = "=0.12.0"
+reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-tls", "stream", "gzip", "zstd"] }
 ryu = "=1.0.23"
-serde = { version = "=1.0.229", features = ["derive"] }
+serde = { version = "=1.0.229", features = ["derive", "rc"] }
 serde_json = { version = "=1.0.154", features = ["preserve_order", "float_roundtrip"] }
 sha2 = "=0.11.1"
 similar = { version = "=3.2.0", default-features = false, features = ["text"] }
 thiserror = "=2.0.21"
-tokio = { version = "=1.54.1", default-features = false }
+tokio = { version = "=1.54.1", default-features = false, features = ["macros", "rt", "rt-multi-thread", "sync", "time"] }
 tokio-util = { version = "=0.7.20", default-features = false }
 toml = "=1.1.8"
 tracing = { version = "=0.1.44", default-features = false, features = ["std"] }

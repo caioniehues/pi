@@ -4,11 +4,45 @@ edition.workspace = true
 license.workspace = true
 publish.workspace = true
 rust-version.workspace = true
+build = "build.rs"
 
 [lints]
 workspace = true
 
+[features]
+# The in-process faux provider (`providers::faux`) for tests and pi-core's testing harness.
+faux = []
+
 [dependencies]
-pi-types = { path = "../pi-types" }
+async-trait.workspace = true
+bytes.workspace = true
+futures-core.workspace = true
+futures-util.workspace = true
+getrandom.workspace = true
+http.workspace = true
+pi-json = { path = "../pi-json" }
 pi-schema = { path = "../pi-schema" }
 pi-telemetry = { path = "../pi-telemetry" }
+pi-types = { path = "../pi-types" }
+regress.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+url.workspace = true
+
+[build-dependencies]
+pi-json = { path = "../pi-json" }
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+allocation-counter.workspace = true
+anyhow.workspace = true
+# Paused clocks stand in for the TS fake timers.
+tokio = { workspace = true, features = ["io-util", "net", "test-util"] }
+# The crate itself with the faux provider, so `cargo test --workspace` (rust/check.sh) builds and tests it.
+pi-ai = { path = ".", features = ["faux"] }

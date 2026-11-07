@@ -3,7 +3,9 @@
 mod common;
 
 use common::round_trip;
-use pi_types::{ClassifierModel, ImageModel, Model, ModelThinkingLevel, ThinkingLevel, ThinkingLevelValue};
+use pi_types::{
+	ClassifierModel, ImageModel, Model, ModelCompat, ModelThinkingLevel, ThinkingLevel, ThinkingLevelValue,
+};
 
 #[test]
 fn chat_models_round_trip_with_every_optional_field() {
@@ -32,4 +34,28 @@ fn thinking_levels_use_the_ts_names() {
 	assert_eq!(round_trip::<ThinkingLevel>(r#""xhigh""#), ThinkingLevel::Xhigh);
 	assert_eq!(round_trip::<ModelThinkingLevel>(r#""off""#), ModelThinkingLevel::Off);
 	assert!(common::read::<ThinkingLevel>(r#""off""#).is_err());
+}
+
+#[test]
+fn compat_is_typed_by_api_and_keeps_unknown_keys() {
+	let model: Model = round_trip(
+		r#"{"id":"m","name":"M","api":"anthropic-messages","provider":"p","baseUrl":"b","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1,"maxTokens":1,"compat":{"supportsTemperature":false,"future":1}}"#,
+	);
+	let compat = model.compat.as_ref().and_then(ModelCompat::anthropic_messages).unwrap();
+	assert_eq!(compat.supports_temperature, Some(false));
+	assert_eq!(compat.extra.get("future"), Some(&serde_json::json!(1)));
+	// A field whose value does not fit is kept raw; the valid fields still read.
+	let misfit: Model = round_trip(
+		r#"{"id":"m","name":"M","api":"openai-completions","provider":"p","baseUrl":"b","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1,"maxTokens":1,"compat":{"supportsDeveloperRole":false,"supportsStore":"yes"}}"#,
+	);
+	let compat = misfit
+		.compat
+		.as_ref()
+		.and_then(ModelCompat::openai_completions)
+		.unwrap();
+	assert_eq!(
+		(compat.supports_store, compat.supports_developer_role),
+		(None, Some(false))
+	);
+	assert_eq!(compat.extra.get("supportsStore"), Some(&serde_json::json!("yes")));
 }

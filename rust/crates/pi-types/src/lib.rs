@@ -34,6 +34,7 @@
 mod agent_event;
 mod agent_message;
 mod classifier;
+mod compat;
 mod content;
 mod images;
 mod json_event;
@@ -51,6 +52,7 @@ mod usage;
 pub use agent_event::*;
 pub use agent_message::*;
 pub use classifier::*;
+pub use compat::*;
 pub use content::*;
 pub use images::*;
 pub use json_event::*;
