@@ -1,0 +1,15 @@
+[package]
+name = "pi-durable"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pi-chord = { path = "../pi-chord" }
+pi-schema = { path = "../pi-schema" }
+pi-telemetry = { path = "../pi-telemetry" }
+pi-codemode = { path = "../pi-codemode" }

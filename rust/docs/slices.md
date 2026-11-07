@@ -78,6 +78,16 @@ Whoever defers something adds it here in the same change; a slice's spec include
 - **Mermaid rendering**: diagrams render as a fenced code block; an ANSI renderer port of `lovely-mermaid` only if the
   owner asks (plan, 2026-11-06).
 
+### C23
+
+- **`Date.parse` of offset-less date-times and non-ISO text**: `pi_json::parse_iso_ms` reads the ECMA-262 Date Time
+  String Format as V8 does, but returns `None` for date-times without an offset (`2024-01-01T12:00`, local time in
+  JS) and for V8's legacy non-ISO forms (`Tue, 05 Nov 2024 12:00:00 GMT`, `2024-1-01`); port them, with the local
+  time zone, where a TS caller parses such text (C0, 2026-11-06).
+- **`iso_ms` past the JS range**: for times beyond ±8.64e15 ms, where `toISOString` throws, `iso_ms` prints the
+  proleptic Gregorian date instead of failing. Acceptable while every `SystemTime` comes from a JS-range source;
+  revisit if one can come from elsewhere (C0, 2026-11-06).
+
 ### After C25
 
 - **llama.cpp built-in** (`packages/coding-agent/src/extensions/llama/`, 1.6k lines): provider, `/llama` command,

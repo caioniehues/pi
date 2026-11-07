@@ -1,0 +1,64 @@
+[workspace]
+resolver = "3"
+members = [
+	"crates/pi-json",
+	"crates/pi-types",
+	"crates/pi-telemetry",
+	"crates/pi-schema",
+	"crates/pi-ai",
+	"crates/pi-agent",
+	"crates/pi-mcp",
+	"crates/pi-codemode",
+	"crates/pi-tui",
+	"crates/pi-sdk",
+	"crates/pi-core",
+	"crates/pi-interactive",
+	"crates/pi-cli",
+	"crates/extensions/pi-ext-mcp",
+	"crates/extensions/pi-ext-codemode",
+	"crates/extensions/pi-ext-tool-search",
+	"crates/pi-chord",
+	"crates/pi-durable",
+	"crates/pi-env-client",
+	"tools/pi-fake-provider",
+	"tools/pi-difftest",
+	"tools/xtask",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+publish = false
+rust-version = "1.99.1"
+
+# Every external dependency of the workspace, pinned exactly; crates use `workspace = true` (xtask check-pins).
+[workspace.dependencies]
+anyhow = "=1.0.104"
+getrandom = "=0.4.3"
+ryu = "=1.0.23"
+serde_json = { version = "=1.0.154", features = ["preserve_order", "float_roundtrip"] }
+sha2 = "=0.11.1"
+thiserror = "=2.0.21"
+toml = "=1.1.8"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+# Pedantic allow-list (rust/docs/slices/C0.md): every exception is decided here, with the reason.
+# Most functions return values callers obviously use; the attribute on each would be noise.
+must_use_candidate = "allow"
+# Doc comments are one line by convention (rust/docs/conventions.md); the error enum documents the failures.
+missing_errors_doc = "allow"
+# Library code panics only on `// invariant:` paths (conventions); a `# Panics` section for those would be noise.
+missing_panics_doc = "allow"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

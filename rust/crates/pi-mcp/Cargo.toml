@@ -1,0 +1,13 @@
+[package]
+name = "pi-mcp"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pi-schema = { path = "../pi-schema" }
+pi-telemetry = { path = "../pi-telemetry" }

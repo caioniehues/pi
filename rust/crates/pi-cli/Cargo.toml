@@ -1,0 +1,19 @@
+[package]
+name = "pi-cli"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "pi"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+pi-interactive = { path = "../pi-interactive" }
+pi-ext-mcp = { path = "../extensions/pi-ext-mcp" }
+pi-ext-codemode = { path = "../extensions/pi-ext-codemode" }
+pi-ext-tool-search = { path = "../extensions/pi-ext-tool-search" }

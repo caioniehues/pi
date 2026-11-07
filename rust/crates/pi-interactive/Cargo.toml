@@ -1,0 +1,12 @@
+[package]
+name = "pi-interactive"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pi-core = { path = "../pi-core" }

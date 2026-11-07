@@ -1,0 +1,12 @@
+[package]
+name = "pi-ext-codemode"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pi-codemode = { path = "../../pi-codemode" }

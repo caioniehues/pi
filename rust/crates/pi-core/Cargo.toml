@@ -1,0 +1,13 @@
+[package]
+name = "pi-core"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pi-sdk = { path = "../pi-sdk" }
+pi-telemetry = { path = "../pi-telemetry" }

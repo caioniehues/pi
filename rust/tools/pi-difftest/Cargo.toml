@@ -1,0 +1,12 @@
+[package]
+name = "pi-difftest"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pi-fake-provider = { path = "../pi-fake-provider" }

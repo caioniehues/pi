@@ -1,0 +1,12 @@
+[package]
+name = "pi-ext-mcp"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pi-mcp = { path = "../../pi-mcp" }
