@@ -14,11 +14,11 @@ includes every entry of its section; a done entry is deleted.
 | # | Slice | Crates | Status |
 | --- | --- | --- | --- |
 | C0 | Workspace bootstrap, `pi-json`, xtask, `check.sh` | all skeletons, `pi-json`, `xtask` | done |
-| C1 | Shared types + telemetry | `pi-types`, `pi-telemetry` | building |
+| C1 | Shared types + telemetry | `pi-types`, `pi-telemetry` | done |
 | C2 | pi-schema | `pi-schema` | done |
-| C3a | pi-ai core: catalog, registry, auth resolution, streams, transcript, retry, faux provider | `pi-ai` | planned |
+| C3a | pi-ai core: catalog, registry, auth resolution, streams, transcript, retry, faux provider | `pi-ai` | building |
 | C3b | pi-ai wire APIs anthropic-messages and openai-completions | `pi-ai` | planned |
-| C4 | Fake provider server + difftest driver, goldens from TS | `pi-fake-provider`, `pi-difftest` | planned |
+| C4 | Fake provider server + difftest driver, goldens from TS | `pi-fake-provider`, `pi-difftest` | building |
 | C5 | pi-agent | `pi-agent` | planned |
 | C6a | pi-sdk core: extension, events, tools, contexts, api, settings, `docs/sdk.md` | `pi-sdk` | planned |
 | C6b | pi-sdk theme and UI surface; pi-tui component contract and colors | `pi-sdk`, `pi-tui` | planned |
