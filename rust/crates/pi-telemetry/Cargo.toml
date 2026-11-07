@@ -7,3 +7,17 @@ rust-version.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+# Forwards spans and events to the `tracing` crate (`TracingTelemetryContext`).
+tracing = ["dep:tracing"]
+
+[dependencies]
+pi-json = { path = "../pi-json" }
+serde_json.workspace = true
+thiserror.workspace = true
+tracing = { workspace = true, optional = true }
+
+[dev-dependencies]
+# The crate itself with `tracing`, so `cargo test --workspace` (rust/check.sh) also builds and tests the bridge.
+pi-telemetry = { path = ".", features = ["tracing"] }

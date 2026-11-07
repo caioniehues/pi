@@ -73,10 +73,45 @@ includes every entry of its section; a done entry is deleted.
 Obligations a slice deliberately left to a later one, under the slice that must do them, with where they came from.
 Whoever defers something adds it here in the same change; a slice's spec includes every entry of its section.
 
-### C1
+### C3b
 
-- **Lenient surrogates**: pi-types tests and readers must use `pi_json::parse` (lenient surrogates), not
-  `serde_json::from_str` (D0a review, 2026-11-06).
+- **Anthropic `Usage` key order**: `pi_types::Usage` writes the TS constructor order (`input`, `output`,
+  `cacheRead`, `cacheWrite`, `cacheWrite1h`, `reasoning`, `totalTokens`, `cost`), but `anthropic-messages.ts` assigns
+  `cacheWrite1h` (and `reasoning` when reported) after `cost` on every message, so TS-written Anthropic assistant
+  lines rewrite with a different key order. C3b writes `Usage` in that provider's order for its messages (C1 review,
+  2026-11-06).
+
+### C4
+
+- **`Usage` key order is not normalized away**: the difftest normalizer must not mask the Anthropic `Usage` key
+  order difference above; decide there whether the Rust writer reorders on write (C1 review, 2026-11-06).
+
+### C8
+
+- **Pre-v3 lines and migration key order**: v1 entries have no `id`/`parentId` and v1 `compaction` has
+  `firstKeptEntryIndex`, so both fixtures' entries read as `SessionEntry::Other`; a v2 `hookMessage` message is
+  `AgentMessage::Other`. TS `migrateV1ToV2` mutates the parsed objects: it appends `id` and `parentId` at the end of
+  each entry, appends `firstKeptEntryId` at the end of a compaction (and deletes the index), and appends `version` last
+  to an unversioned header. The typed `pi-types` structs write `id`/`parentId` right after `type`, so typed
+  re-serialization of a migrated v1 entry is not byte-identical to TS's rewrite (C1's fixture test: 0 of 2,020 v1
+  entries are). `migrate_session_entries` works on the JSON objects as TS does, and the rewrite after migration must
+  write those objects in TS's order (keep the migrated objects for `_rewriteFile`, or write entries in their read
+  order) for the migration golden to be byte-identical (C1, 2026-11-06).
+- **Malformed known entries**: a known `type` with a malformed body silently reads as `Other` (TS parity: TS does not
+  validate). The C8 loader logs a diagnostic when an entry is `Other` but its `type` is a known kind. Token counts in
+  `Usage` are `i64` because TS can write negatives (`google-generative-ai.ts`/`google-vertex.ts` subtract cached from
+  prompt tokens without clamping), so such messages stay typed (C1 review, 2026-11-06).
+
+### C11
+
+- **`Usage::total_tokens` is `Option<i64>`**: sessions from before the field existed lack it. Port
+  `calculateContextTokens` with TS's `usage.totalTokens || sum` (a `0` also falls back to the sum) (C1, 2026-11-06).
+
+### C12
+
+- **Unknown RPC commands**: `RpcCommand` rejects an unknown `type`; RPC mode must still echo `id` and answer
+  `Unknown command: <type>`, so it reads `id` and `type` from the raw object before typed parsing (C1 review,
+  2026-11-06).
 
 ### C3a
 
@@ -119,8 +154,16 @@ Whoever defers something adds it here in the same change; a slice's spec include
 ### D0b
 
 - **`TelemetrySpan` from C1**: replace `pi_chord::context::TelemetrySpan` (a local trait with `add_event`,
-  `set_attributes`, `start_child`) with `pi_telemetry::TelemetrySpan` once C1 has landed, add `trace_in` (TS `traceIn`,
-  which needs `SpanOptions` and span ends), and port the `traceIn` halves of `context.test.ts` (D0a, 2026-11-06).
+  `set_attributes`, `start_child`) with `pi_telemetry::TelemetrySpan`. `start_span` returns a
+  `Box<dyn TelemetrySpan>` that settles on `end` or drop; since pi-chord's `Context` records events and attributes on
+  its span, it holds `Arc<dyn pi_telemetry::TelemetrySpan>` (from the box; the span settles when the last clone drops)
+  or a recording handle of its own. `TelemetrySpan::handle()` alone is not enough: it is a plain context and loses
+  `add_event`/`set_attributes`. Add `trace_in` (TS `traceIn`, which needs `SpanOptions` and span ends) and port the
+  `traceIn` halves of `context.test.ts` (D0a, C1 review, 2026-11-06).
+- **Telemetry store conformance**: `packages/telemetry/test/store-conformance.ts` is shared by the in-memory and
+  the Chord SQLite stores. C1 ported its cases as in-memory tests (`pi-telemetry/tests/memory.rs`); with the SQLite
+  store, make them a reusable `pi_telemetry::testing` suite parameterised by a store factory, with an injectable clock
+  for the exact-time cases (C1, 2026-11-06).
 - **`PendingOps` fuzz tests**: `PendingOps` and its adversarial, cap, ownership, size and cost tests landed in D0a;
   the four "PendingOps folding" fuzz tests of `delta-pending.test.ts` need the tracker and `diff_revisions`, so they
   are D0b's. The folding rules are done; D0b changes them only if those tests show a difference (D0a, 2026-11-06).

@@ -18,5 +18,8 @@ pub use uuid::{UuidError, uuid_v4, uuid_v7};
 /// A JSON value with object keys in insertion order (`serde_json`'s `preserve_order`).
 pub type JsonValue = serde_json::Value;
 
+/// A JSON object with keys in insertion order, as a JS object literal keeps them.
+pub type JsonObject = serde_json::Map<String, JsonValue>;
+
 /// Lowercase hex digits, for `\u00XX` escapes and UUIDs.
 const HEX_DIGITS: &[u8; 16] = b"0123456789abcdef";
