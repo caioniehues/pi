@@ -20,7 +20,8 @@ includes every entry of its section; a done entry is deleted.
 | C3b | pi-ai wire APIs anthropic-messages and openai-completions | `pi-ai` | planned |
 | C4 | Fake provider server + difftest driver, goldens from TS | `pi-fake-provider`, `pi-difftest` | planned |
 | C5 | pi-agent | `pi-agent` | planned |
-| C6 | pi-sdk v1 + `docs/sdk.md` | `pi-sdk` | planned |
+| C6a | pi-sdk core: extension, events, tools, contexts, api, settings, `docs/sdk.md` | `pi-sdk` | planned |
+| C6b | pi-sdk theme and UI surface; pi-tui component contract and colors | `pi-sdk`, `pi-tui` | planned |
 | C7 | pi-core foundation: config, settings, auth, lockfile, models, trust, keybindings | `pi-core` | planned |
 | C8 | Session manager (JSONL v3, migration, tree, projection) | `pi-core` | planned |
 | C9 | Tools | `pi-core` | planned |
