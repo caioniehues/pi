@@ -13,9 +13,9 @@ includes every entry of its section; a done entry is deleted.
 
 | # | Slice | Crates | Status |
 | --- | --- | --- | --- |
-| C0 | Workspace bootstrap, `pi-json`, xtask, `check.sh` | all skeletons, `pi-json`, `xtask` | building |
-| C1 | Shared types + telemetry | `pi-types`, `pi-telemetry` | planned |
-| C2 | pi-schema | `pi-schema` | planned |
+| C0 | Workspace bootstrap, `pi-json`, xtask, `check.sh` | all skeletons, `pi-json`, `xtask` | done |
+| C1 | Shared types + telemetry | `pi-types`, `pi-telemetry` | building |
+| C2 | pi-schema | `pi-schema` | building |
 | C3a | pi-ai core: catalog, registry, auth resolution, streams, transcript, retry, faux provider | `pi-ai` | planned |
 | C3b | pi-ai wire APIs anthropic-messages and openai-completions | `pi-ai` | planned |
 | C4 | Fake provider server + difftest driver, goldens from TS | `pi-fake-provider`, `pi-difftest` | planned |
@@ -52,7 +52,7 @@ includes every entry of its section; a done entry is deleted.
 
 | # | Slice | Crates | Status |
 | --- | --- | --- | --- |
-| D0a | chord: context, json, delta ops | `pi-chord` | planned |
+| D0a | chord: context, json, delta ops | `pi-chord` | building |
 | D0b | chord: tracker, diff, watch, output, sqlite | `pi-chord` | planned |
 | D1 | Durable types, memory storage, storage conformance | `pi-durable` | planned |
 | D2a | Session I | `pi-durable` | planned |
