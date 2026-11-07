@@ -33,8 +33,11 @@ rust-version = "1.99.1"
 
 # Every external dependency of the workspace, pinned exactly; crates use `workspace = true` (xtask check-pins).
 [workspace.dependencies]
+allocation-counter = "=0.8.1"
 anyhow = "=1.0.104"
 getrandom = "=0.4.3"
+icu_normalizer = "=2.3.0"
+regress = "=0.12.0"
 ryu = "=1.0.23"
 serde = "=1.0.229"
 serde_json = { version = "=1.0.154", features = ["preserve_order", "float_roundtrip"] }
@@ -42,6 +45,7 @@ sha2 = "=0.11.1"
 thiserror = "=2.0.21"
 tokio-util = { version = "=0.7.20", default-features = false }
 toml = "=1.1.8"
+url = "=2.5.8"
 
 [workspace.lints.rust]
 missing_docs = "warn"

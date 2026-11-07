@@ -1,6 +1,7 @@
 //! `JSON.stringify` of Node 26, byte for byte: compact and indented output, key order, string escapes and numbers.
 
 use crate::HEX_DIGITS;
+use crate::keys::js_key_order;
 use crate::number::js_number_to_string;
 use serde_json::{Map, Number, Value};
 
@@ -99,12 +100,7 @@ fn write_object(map: &Map<String, Value>, gap: &str, depth: usize, out: &mut Str
 		out.push_str("{}");
 		return;
 	}
-	// Most objects have no index keys; they keep insertion order without the sort's allocation.
-	if map.keys().any(|key| array_index(key).is_some()) {
-		write_members(js_key_order(map), gap, depth, out);
-	} else {
-		write_members(map.iter(), gap, depth, out);
-	}
+	write_members(js_key_order(map), gap, depth, out);
 }
 
 fn write_members<'a>(
@@ -125,29 +121,6 @@ fn write_members<'a>(
 	}
 	write_line_break(gap, depth, out);
 	out.push('}');
-}
-
-/// The order a JS object enumerates its keys in: array indices ascending, then the other keys in insertion order.
-fn js_key_order(map: &Map<String, Value>) -> impl Iterator<Item = (&String, &Value)> {
-	let mut indexed: Vec<(u32, &String, &Value)> = map
-		.iter()
-		.filter_map(|(key, value)| array_index(key).map(|index| (index, key, value)))
-		.collect();
-	indexed.sort_unstable_by_key(|&(index, _, _)| index);
-	let named = map.iter().filter(|(key, _)| array_index(key).is_none());
-	indexed.into_iter().map(|(_, key, value)| (key, value)).chain(named)
-}
-
-/// The largest array index is 2^32 - 2 (ECMA-262 6.1.7); `"4294967295"` is an ordinary key.
-const MAX_ARRAY_INDEX: u32 = u32::MAX - 1;
-
-/// The array index a key names: canonical decimal (no sign, no leading zero) up to 2^32 - 2.
-fn array_index(key: &str) -> Option<u32> {
-	let canonical = key == "0" || (!key.starts_with('0') && !key.is_empty() && key.bytes().all(|b| b.is_ascii_digit()));
-	if !canonical || key.len() > 10 {
-		return None;
-	}
-	key.parse::<u32>().ok().filter(|&index| index <= MAX_ARRAY_INDEX)
 }
 
 /// Writes `,` before every item but the first, then the line break and indent of `depth` when indenting.

@@ -1,3 +1,5 @@
 # Tests use unwrap/expect freely; library code needs an `// invariant:` comment (rust/docs/conventions.md).
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
+# Names the port's doc comments use as prose (`..` keeps clippy's defaults): the TypeBox library, the URI term.
+doc-valid-idents = ["TypeBox", "IPvFuture", ".."]

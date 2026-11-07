@@ -78,6 +78,13 @@ Whoever defers something adds it here in the same change; a slice's spec include
 - **Lenient surrogates**: pi-types tests and readers must use `pi_json::parse` (lenient surrogates), not
   `serde_json::from_str` (D0a review, 2026-11-06).
 
+### C3a
+
+- **Tool-call arguments with unpaired surrogates**: decided in D0a: `pi_json::parse` parses leniently and maps a lone
+  surrogate escape (`"\ud800"`) to U+FFFD, where `serde_json` rejects it and `JSON.parse` keeps it. pi-ai's argument
+  parsing must go through `pi_json::parse`. One unpaired surrogate and U+FFFD both count as one code point, so
+  pi-schema's length checks agree with TS (C2 review, 2026-11-06).
+
 ### C18b
 
 - **Mermaid rendering**: diagrams render as a fenced code block; an ANSI renderer port of `lovely-mermaid` only if the
@@ -92,6 +99,22 @@ Whoever defers something adds it here in the same change; a slice's spec include
 - **`iso_ms` past the JS range**: for times beyond ±8.64e15 ms, where `toISOString` throws, `iso_ms` prints the
   proleptic Gregorian date instead of failing. Acceptable while every `SystemTime` comes from a JS-range source;
   revisit if one can come from elsewhere (C0, 2026-11-06).
+
+### C24
+
+- **pi-schema checks that allocate**: `check()` allocates nothing for valid values except where `regress` runs
+  (`pattern`, `patternProperties`, the regex formats: one allocation per match), `propertyNames` (each key becomes a
+  `JsonValue`), `unevaluated*` (the sets of evaluated names) and `$dynamicRef` (the scope stack); remove them if
+  profiles show them (C2, 2026-11-06).
+- **pi-schema `parse()`/`errors()` compile per call**: TS keeps its explainer and coercer after the first use; the
+  port compiles the schema again for each call, because that compiler borrows the validator's schema. `parse()` runs
+  `coerce()` on every tool call: measured, the edit-tool schema checks in 0.04 µs and parses in 2.7 µs; an MCP-style
+  schema with three patterns checks in 0.3 µs and parses in 10.5 µs, because the pattern regexes recompile per call.
+  Acceptable against model latency; `errors()` runs only on failure. Cache the compiler if profiles show it (C2
+  review, 2026-11-06).
+- **No shared regex cache across validators**: TS's `sharedRegex` shares one `RegExp` per pattern source across all
+  compiled schemas; the port compiles each pattern once per `compile` (and per `parse`/`errors` call, above). Add a
+  shared cache if many tools repeat patterns (C2 review, 2026-11-06).
 
 ### D0b
 
@@ -144,3 +167,6 @@ Behaviour of the Rust port that deliberately differs from the TS reference, with
   rejects those of 2^64 and more with the TS message of the field (path segments, `t` counts, `p` index and remove
   count, `#` ids and path ids, permutation entries). No producer writes one. Indices above 2^53 stay exact where a JS
   number rounds them, so an index segment on an object names the key of its exact digits.
+- **Malformed A-labels in URL hosts** (C2 review, 2026-11-06): the `url`, `iri` and `iri-reference` formats reject
+  hosts with malformed A-labels (`http://xn--a.com/`, `http://xn--/`, `http://xn--ab-.com`) that Node's
+  `URL.canParse` accepts; the `url` crate validates IDNA strictly. Hostile input only (`pi_schema::formats`, C2).

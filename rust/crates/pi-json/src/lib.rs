@@ -1,12 +1,14 @@
 //! pi-json: the one place that turns values into the bytes the TS implementation would have written (JSON text,
 //! numbers, ISO timestamps, UUIDs), and reads the JSON text it wrote.
 
+mod keys;
 mod number;
 mod parse;
 mod stringify;
 mod time;
 mod uuid;
 
+pub use keys::js_key_order;
 pub use number::js_number_to_string;
 pub use parse::{parse, parse_bytes};
 pub use stringify::{to_js_string, to_js_string_pretty};

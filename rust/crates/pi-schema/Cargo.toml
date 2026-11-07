@@ -7,3 +7,16 @@ rust-version.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+icu_normalizer.workspace = true
+pi-json = { path = "../pi-json" }
+regress.workspace = true
+ryu.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+allocation-counter.workspace = true
+anyhow.workspace = true
